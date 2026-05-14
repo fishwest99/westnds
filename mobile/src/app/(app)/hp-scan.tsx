@@ -11,6 +11,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { CameraView, useCameraPermissions } from "expo-camera";
+import * as ImagePicker from "expo-image-picker";
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
 import * as MailComposer from "expo-mail-composer";
@@ -25,6 +26,23 @@ export default function HpScanScreen() {
   const [pdfUri, setPdfUri] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
   const cameraRef = useRef<CameraView>(null);
+
+  const pickFromLibrary = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== "granted") return;
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"] as ImagePicker.MediaType[],
+      allowsMultipleSelection: true,
+      quality: 0.75,
+      base64: true,
+    });
+    if (!result.canceled) {
+      const picked = result.assets
+        .filter((a) => a.base64)
+        .map((a) => ({ uri: a.uri, base64: a.base64! }));
+      setPhotos((prev) => [...prev, ...picked]);
+    }
+  };
 
   const takePhoto = async () => {
     const photo = await cameraRef.current?.takePictureAsync({ quality: 0.75, base64: true });
@@ -120,6 +138,12 @@ export default function HpScanScreen() {
               ) : <View style={{ width: 72 }} />}
             </View>
           </CameraView>
+          {/* Library strip — outside CameraView so it is never overlaid */}
+          <SafeAreaView edges={["bottom"]} style={styles.libraryStrip}>
+            <Pressable style={styles.libraryBtn} onPress={pickFromLibrary} testID="pick-from-library-button">
+              <Text style={styles.libraryBtnText}>📁 Pick from Library</Text>
+            </Pressable>
+          </SafeAreaView>
         </View>
       ) : null}
 
@@ -260,4 +284,9 @@ const styles = StyleSheet.create({
   emailBtnText: { color: "#2d3748", fontSize: 16, fontWeight: "700" },
   scanAgainLink: { marginTop: 20 },
   scanAgainText: { color: "#2b6cb0", fontSize: 14, fontWeight: "600" },
+
+  // Library strip
+  libraryStrip: { height: 70, backgroundColor: "#1a202c", justifyContent: "center", alignItems: "center" },
+  libraryBtn: { backgroundColor: "#2d3748", borderRadius: 12, paddingHorizontal: 24, paddingVertical: 12 },
+  libraryBtnText: { color: "#fff", fontSize: 15, fontWeight: "700" },
 });
