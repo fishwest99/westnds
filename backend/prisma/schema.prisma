@@ -20,6 +20,7 @@ model User {
   accounts      Account[]
   consentForms  ConsentForm[]
   timeOffRequests TimeOffRequest[]
+  workEntries   WorkEntry[]
 }
 
 model Session {
@@ -159,4 +160,18 @@ model TimeOffRequest {
   reviewedBy String?
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
+}
+
+model WorkEntry {
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  facilityName   String   @default("")
+  date           String   // YYYY-MM-DD
+  startTime      String   // HH:MM (24h)
+  endTime        String   // HH:MM (24h)
+  travelMinutes  Int      @default(0)
+  notes          String   @default("")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 }

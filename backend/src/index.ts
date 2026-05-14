@@ -6,6 +6,7 @@ import { auth } from "./auth";
 import { consentFormRouter } from "./routes/consent-forms";
 import { onCallRouter } from "./routes/on-call";
 import { timeOffRouter } from "./routes/time-off";
+import { workEntriesRouter } from "./routes/work-entries";
 
 const app = new Hono<{
   Variables: {
@@ -52,6 +53,7 @@ app.on(["GET", "POST"], "/api/auth/*", (c) => auth.handler(c.req.raw));
 app.route("/api/consent-forms", consentFormRouter);
 app.route("/api/on-call", onCallRouter);
 app.route("/api/time-off", timeOffRouter);
+app.route("/api/work-entries", workEntriesRouter);
 
 const port = Number(process.env.PORT) || 3000;
 

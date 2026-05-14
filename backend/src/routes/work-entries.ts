@@ -1,0 +1,247 @@
+import { Hono } from "hono";
+import { z } from "zod";
+import { prisma } from "../prisma";
+import { auth } from "../auth";
+
+const workEntriesRouter = new Hono<{
+  Variables: {
+    user: typeof auth.$Infer.Session.user | null;
+    session: typeof auth.$Infer.Session.session | null;
+  };
+}>();
+
+const entryBodySchema = z.object({
+  facilityName: z.string().default(""),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "date must be YYYY-MM-DD"),
+  startTime: z.string().regex(/^\d{2}:\d{2}$/, "startTime must be HH:MM"),
+  endTime: z.string().regex(/^\d{2}:\d{2}$/, "endTime must be HH:MM"),
+  travelMinutes: z.number().int().min(0).default(0),
+  notes: z.string().default(""),
+});
+
+/** Parse "HH:MM" into total minutes since midnight. */
+function timeToMinutes(hhmm: string): number {
+  const parts = hhmm.split(":");
+  const h = Number(parts[0]);
+  const m = Number(parts[1]);
+  return h * 60 + m;
+}
+
+/** Compute the Monday-based week boundaries (Mon–Sun) for a given YYYY-MM-DD string. */
+function weekBoundaries(refDate: Date): { start: Date; end: Date } {
+  const day = refDate.getDay(); // 0=Sun, 1=Mon … 6=Sat
+  const diffToMon = day === 0 ? -6 : 1 - day;
+  const monday = new Date(refDate);
+  monday.setDate(refDate.getDate() + diffToMon);
+  monday.setHours(0, 0, 0, 0);
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  sunday.setHours(23, 59, 59, 999);
+  return { start: monday, end: sunday };
+}
+
+/** Format a Date as YYYY-MM-DD in local time. */
+function toDateString(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+const MONTH_NAMES = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
+
+function buildPeriodRange(
+  period: "day" | "week" | "month" | "year",
+  referenceDate: string
+): { startDate: string; endDate: string; periodLabel: string } {
+  const ref = new Date(referenceDate + "T00:00:00");
+  const year = ref.getFullYear();
+  const month = ref.getMonth(); // 0-based
+  const dayOfMonth = ref.getDate();
+
+  switch (period) {
+    case "day": {
+      const label = `${MONTH_NAMES[month]} ${dayOfMonth}, ${year}`;
+      return { startDate: referenceDate, endDate: referenceDate, periodLabel: label };
+    }
+    case "week": {
+      const { start, end } = weekBoundaries(ref);
+      const startStr = toDateString(start);
+      const endStr = toDateString(end);
+      const sMonth = MONTH_NAMES[start.getMonth()];
+      const eMonth = MONTH_NAMES[end.getMonth()];
+      const sYear = start.getFullYear();
+      const eYear = end.getFullYear();
+      let label: string;
+      if (sYear !== eYear) {
+        label = `${sMonth} ${start.getDate()}, ${sYear} – ${eMonth} ${end.getDate()}, ${eYear}`;
+      } else if (sMonth !== eMonth) {
+        label = `${sMonth} ${start.getDate()} – ${eMonth} ${end.getDate()}, ${sYear}`;
+      } else {
+        label = `${sMonth} ${start.getDate()} – ${eMonth} ${end.getDate()}, ${sYear}`;
+      }
+      return { startDate: startStr, endDate: endStr, periodLabel: label };
+    }
+    case "month": {
+      const firstDay = new Date(year, month, 1);
+      const lastDay = new Date(year, month + 1, 0);
+      const label = `${MONTH_NAMES[month]} ${year}`;
+      return { startDate: toDateString(firstDay), endDate: toDateString(lastDay), periodLabel: label };
+    }
+    case "year": {
+      const firstDay = new Date(year, 0, 1);
+      const lastDay = new Date(year, 11, 31);
+      return { startDate: toDateString(firstDay), endDate: toDateString(lastDay), periodLabel: String(year) };
+    }
+  }
+}
+
+// GET /api/work-entries/summary — must be registered before /:id
+workEntriesRouter.get("/summary", async (c) => {
+  const user = c.get("user");
+  if (!user) return c.json({ error: { message: "Unauthorized" } }, 401);
+
+  const period = (c.req.query("period") ?? "week") as "day" | "week" | "month" | "year";
+  const referenceDate = c.req.query("referenceDate") ?? toDateString(new Date());
+
+  if (!["day", "week", "month", "year"].includes(period)) {
+    return c.json({ error: { message: "period must be day, week, month, or year" } }, 400);
+  }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(referenceDate)) {
+    return c.json({ error: { message: "referenceDate must be YYYY-MM-DD" } }, 400);
+  }
+
+  const { startDate, endDate, periodLabel } = buildPeriodRange(period, referenceDate);
+
+  const entries = await prisma.workEntry.findMany({
+    where: {
+      userId: user.id,
+      date: { gte: startDate, lte: endDate },
+    },
+    orderBy: [{ date: "asc" }, { startTime: "asc" }],
+  });
+
+  let totalWorkedMinutes = 0;
+  let totalTravelMinutes = 0;
+
+  for (const entry of entries) {
+    const worked = timeToMinutes(entry.endTime) - timeToMinutes(entry.startTime);
+    totalWorkedMinutes += worked > 0 ? worked : 0;
+    totalTravelMinutes += entry.travelMinutes;
+  }
+
+  return c.json({
+    data: {
+      periodLabel,
+      totalWorkedMinutes,
+      totalTravelMinutes,
+      entryCount: entries.length,
+      entries,
+    },
+  });
+});
+
+// GET /api/work-entries — list current user's entries with optional date range filter
+workEntriesRouter.get("/", async (c) => {
+  const user = c.get("user");
+  if (!user) return c.json({ error: { message: "Unauthorized" } }, 401);
+
+  const startDate = c.req.query("startDate");
+  const endDate = c.req.query("endDate");
+
+  const entries = await prisma.workEntry.findMany({
+    where: {
+      userId: user.id,
+      ...(startDate || endDate
+        ? {
+            date: {
+              ...(startDate ? { gte: startDate } : {}),
+              ...(endDate ? { lte: endDate } : {}),
+            },
+          }
+        : {}),
+    },
+    orderBy: [{ date: "desc" }, { startTime: "desc" }],
+  });
+
+  return c.json({ data: entries });
+});
+
+// POST /api/work-entries — create an entry
+workEntriesRouter.post("/", async (c) => {
+  const user = c.get("user");
+  if (!user) return c.json({ error: { message: "Unauthorized" } }, 401);
+
+  const parsed = entryBodySchema.safeParse(await c.req.json());
+  if (!parsed.success) {
+    return c.json({ error: { message: parsed.error.issues[0]?.message ?? "Invalid body" } }, 400);
+  }
+  const body = parsed.data;
+
+  const entry = await prisma.workEntry.create({
+    data: {
+      userId: user.id,
+      facilityName: body.facilityName,
+      date: body.date,
+      startTime: body.startTime,
+      endTime: body.endTime,
+      travelMinutes: body.travelMinutes,
+      notes: body.notes,
+    },
+  });
+
+  return c.json({ data: entry }, 201);
+});
+
+// PUT /api/work-entries/:id — update own entry
+workEntriesRouter.put("/:id", async (c) => {
+  const user = c.get("user");
+  if (!user) return c.json({ error: { message: "Unauthorized" } }, 401);
+
+  const id = c.req.param("id");
+
+  const parsed = entryBodySchema.safeParse(await c.req.json());
+  if (!parsed.success) {
+    return c.json({ error: { message: parsed.error.issues[0]?.message ?? "Invalid body" } }, 400);
+  }
+  const body = parsed.data;
+
+  const existing = await prisma.workEntry.findUnique({ where: { id } });
+  if (!existing || existing.userId !== user.id) {
+    return c.json({ error: { message: "Not found" } }, 404);
+  }
+
+  const entry = await prisma.workEntry.update({
+    where: { id },
+    data: {
+      facilityName: body.facilityName,
+      date: body.date,
+      startTime: body.startTime,
+      endTime: body.endTime,
+      travelMinutes: body.travelMinutes,
+      notes: body.notes,
+    },
+  });
+
+  return c.json({ data: entry });
+});
+
+// DELETE /api/work-entries/:id — delete own entry
+workEntriesRouter.delete("/:id", async (c) => {
+  const user = c.get("user");
+  if (!user) return c.json({ error: { message: "Unauthorized" } }, 401);
+
+  const id = c.req.param("id");
+  const existing = await prisma.workEntry.findUnique({ where: { id } });
+  if (!existing || existing.userId !== user.id) {
+    return c.json({ error: { message: "Not found" } }, 404);
+  }
+
+  await prisma.workEntry.delete({ where: { id } });
+  return c.body(null, 204);
+});
+
+export { workEntriesRouter };

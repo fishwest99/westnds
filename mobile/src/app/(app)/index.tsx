@@ -60,6 +60,15 @@ const TILES = [
     accent: "#b7791f",
     bg: "#fffff0",
   },
+  {
+    id: "time-tracking",
+    label: "Time Tracking",
+    icon: "⏱",
+    description: "Log hours & view reports",
+    href: "/time-tracking" as const,
+    accent: "#2c7a7b",
+    bg: "#e6fffa",
+  },
 ] as const;
 
 export default function HomeScreen() {
