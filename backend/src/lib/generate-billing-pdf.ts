@@ -172,20 +172,24 @@ export async function generateBillingFormPdf(form: Record<string, unknown>): Pro
         marginBottom: 10,
       } as Content,
 
-      // ── EEG / Monitoring ─────────────────────────────────────────────
+      // ── EEG & MEP Monitoring ─────────────────────────────────────────
       {
         table: {
-          widths: ["*", 60, "*", 60, "*", 60],
+          widths: ["*", 40],
           body: [
             [
-              { text: "EEG / Monitoring", style: "sectionHeader", colSpan: 6, alignment: "center" as const } as TableCell,
-              {} as TableCell, {} as TableCell, {} as TableCell, {} as TableCell, {} as TableCell,
+              { text: "EEG & MEP Monitoring", style: "sectionHeader", colSpan: 2, alignment: "center" as const } as TableCell,
+              {} as TableCell,
             ],
             [
-              { text: "95816/95819 — EEG", bold: true } as TableCell,
-              { text: f("cptEEG"), alignment: "center" as const } as TableCell,
-              { text: "Flat Fee MEP", bold: true } as TableCell,
-              { text: f("flatFeeMEP"), alignment: "center" as const } as TableCell,
+              { text: "CPT Code / Description", bold: true } as TableCell,
+              { text: "Used", bold: true, alignment: "center" as const } as TableCell,
+            ],
+            ...cptRows([
+              ["95813 — Electroencephalography (Continuous EEG)", "cptEEG"],
+              ["Motor Evoked Potentials", "flatFeeMEP"],
+            ], f, true),
+            [
               { text: "Baseline", bold: true } as TableCell,
               { text: f("baseline"), alignment: "center" as const } as TableCell,
             ],

@@ -520,26 +520,21 @@ export default function NewBillingFormScreen() {
             />
           </View>
 
-          {/* EEG / Monitoring */}
+          {/* EEG & MEP Monitoring */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>EEG / Monitoring</Text>
+            <Text style={styles.sectionTitle}>EEG & MEP Monitoring</Text>
             <View style={styles.modalityHeader}>
               <Text style={[styles.modalityHeaderText, { flex: 1 }]}>Procedure</Text>
-              <Text style={[styles.modalityHeaderText, { width: 60, textAlign: "center" }]}>Qty</Text>
+              <Text style={[styles.modalityHeaderText, { width: 52, textAlign: "center" }]}>Used</Text>
             </View>
             <ModalityRow
               label="Electroencephalography — Continuous EEG" cptCode="95813"
               value={form.cptEEG} onChange={(v) => update("cptEEG", v)}
             />
-            <View style={styles.field}>
-              <Text style={styles.fieldLabel}>Flat Fee: Motor Evoked Potential / Craniotomy with EEG Monitoring</Text>
-              <TextInput
-                style={styles.input}
-                value={form.flatFeeMEP}
-                onChangeText={(v) => update("flatFeeMEP", v)}
-                placeholder="Amount or notes"
-              />
-            </View>
+            <ModalityRow
+              label="Motor Evoked Potentials" cptCode=""
+              value={form.flatFeeMEP} onChange={(v) => update("flatFeeMEP", v)}
+            />
             <View style={styles.field}>
               <Text style={styles.fieldLabel}>Baseline</Text>
               <TextInput
