@@ -118,10 +118,9 @@ export default function ConsentFormScreen() {
 
   const loadForm = async () => {
     try {
-      const result = await api.get<{ data: ConsentFormData & { id: string } }>("/api/consent-forms/latest");
-      const data = result.data;
-      setFormId(data.id);
-      setForm({ ...defaultForm, ...data });
+      const result = await api.get<ConsentFormData & { id: string }>("/api/consent-forms/latest");
+      setFormId(result.id);
+      setForm({ ...defaultForm, ...result });
     } catch {
       Alert.alert("Error", "Failed to load form");
     } finally {
