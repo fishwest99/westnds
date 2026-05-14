@@ -682,12 +682,20 @@ export default function EditBillingFormScreen() {
               </View>
               <View style={[styles.field, { flex: 1 }]}>
                 <Text style={styles.fieldLabel}>Cancellation</Text>
-                <TextInput
-                  style={styles.input}
-                  value={form.cancellation}
-                  onChangeText={(v) => update("cancellation", v)}
-                  placeholder="Notes"
-                />
+                <View style={styles.yesNoRow}>
+                  <TouchableOpacity
+                    style={[styles.yesNoBtn, form.cancellation === "yes" && styles.yesNoBtnActive]}
+                    onPress={() => update("cancellation", form.cancellation === "yes" ? "" : "yes")}
+                  >
+                    <Text style={[styles.yesNoBtnText, form.cancellation === "yes" && styles.yesNoBtnTextActive]}>Yes</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.yesNoBtn, form.cancellation === "no" && styles.yesNoBtnActive]}
+                    onPress={() => update("cancellation", form.cancellation === "no" ? "" : "no")}
+                  >
+                    <Text style={[styles.yesNoBtnText, form.cancellation === "no" && styles.yesNoBtnTextActive]}>No</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             </View>
             <View style={styles.field}>
@@ -848,4 +856,9 @@ const styles = StyleSheet.create({
   inputError: { borderColor: "#c53030", backgroundColor: "#fff5f5" },
   needleWarning: { backgroundColor: "#fff5f5", borderWidth: 1, borderColor: "#c53030", borderRadius: 8, padding: 12, marginTop: 8 },
   needleWarningText: { color: "#c53030", fontSize: 13, fontWeight: "600" as const },
+  yesNoRow: { flexDirection: "row", gap: 8 },
+  yesNoBtn: { flex: 1, borderWidth: 1, borderColor: "#e2e8f0", borderRadius: 8, paddingVertical: 12, alignItems: "center", backgroundColor: "#f8fafc" },
+  yesNoBtnActive: { backgroundColor: "#2b6cb0", borderColor: "#2b6cb0" },
+  yesNoBtnText: { fontSize: 15, fontWeight: "600" as const, color: "#4a5568" },
+  yesNoBtnTextActive: { color: "#fff" },
 });
