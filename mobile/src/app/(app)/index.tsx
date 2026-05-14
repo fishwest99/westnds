@@ -3,6 +3,9 @@ import {
   View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView,
   ActivityIndicator, Alert, Platform,
 } from "react-native";
+import { File as FSFile, Paths } from "expo-file-system";
+import * as MailComposer from "expo-mail-composer";
+import * as Sharing from "expo-sharing";
 import { authClient } from "@/lib/auth/auth-client";
 import { useInvalidateSession } from "@/lib/auth/use-session";
 import { api } from "@/lib/api/api";
@@ -94,6 +97,8 @@ export default function ConsentFormScreen() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [emailLoading, setEmailLoading] = useState<boolean>(false);
+  const [shareLoading, setShareLoading] = useState<boolean>(false);
   const saveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const invalidateSession = useInvalidateSession();
 
@@ -161,6 +166,63 @@ export default function ConsentFormScreen() {
         },
       ]
     );
+  };
+
+  const downloadPdf = async (): Promise<string | null> => {
+    if (!formId) return null;
+    const token = authClient.getCookie();
+    const destination = new FSFile(Paths.cache, `consent-form-${formId}.pdf`);
+    try {
+      const result = await FSFile.downloadFileAsync(
+        `${process.env.EXPO_PUBLIC_BACKEND_URL}/api/consent-forms/${formId}/pdf`,
+        destination,
+        { headers: { Cookie: token }, idempotent: true }
+      );
+      return result.uri;
+    } catch (err) {
+      Alert.alert("Error", "Failed to download PDF");
+      return null;
+    }
+  };
+
+  const handleEmailPdf = async () => {
+    const isAvailable = await MailComposer.isAvailableAsync();
+    if (!isAvailable) {
+      Alert.alert("Not Available", "Email is not available on this device. Try 'Share PDF' instead.");
+      return;
+    }
+    setEmailLoading(true);
+    try {
+      const fileUri = await downloadPdf();
+      if (!fileUri) return;
+      await MailComposer.composeAsync({
+        subject: `West NDx Consent Form - ${form.patientName || "Patient"}`,
+        body: `Please find attached the completed Informed Consent, Assignment of Benefits and Financial Responsibility form for Intraoperative Neuromonitoring Services.\n\nPatient: ${form.patientName || ""}\nDate of Service: ${form.dateOfService || ""}\nSurgeon: ${form.surgeonName || ""}`,
+        attachments: [fileUri],
+      });
+    } finally {
+      setEmailLoading(false);
+    }
+  };
+
+  const handleSharePdf = async () => {
+    setShareLoading(true);
+    try {
+      const fileUri = await downloadPdf();
+      if (!fileUri) return;
+      const canShare = await Sharing.isAvailableAsync();
+      if (!canShare) {
+        Alert.alert("Not Available", "Sharing is not available on this device.");
+        return;
+      }
+      await Sharing.shareAsync(fileUri, {
+        mimeType: "application/pdf",
+        dialogTitle: "Share Consent Form PDF",
+        UTI: "com.adobe.pdf",
+      });
+    } finally {
+      setShareLoading(false);
+    }
   };
 
   const handleSignOut = async () => {
@@ -348,7 +410,32 @@ export default function ConsentFormScreen() {
         </View>
       </View>
 
-      {!isSubmitted && (
+      {isSubmitted ? (
+        <View style={styles.actionRow}>
+          <TouchableOpacity
+            style={[styles.actionButton, styles.emailButton]}
+            onPress={handleEmailPdf}
+            disabled={emailLoading}
+          >
+            {emailLoading ? (
+              <ActivityIndicator color="#fff" size="small" />
+            ) : (
+              <Text style={styles.actionButtonText}>Email PDF</Text>
+            )}
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.actionButton, styles.shareButton]}
+            onPress={handleSharePdf}
+            disabled={shareLoading}
+          >
+            {shareLoading ? (
+              <ActivityIndicator color="#2b6cb0" size="small" />
+            ) : (
+              <Text style={[styles.actionButtonText, { color: "#2b6cb0" }]}>Share PDF</Text>
+            )}
+          </TouchableOpacity>
+        </View>
+      ) : (
         <TouchableOpacity style={styles.submitButton} onPress={handleSubmit} disabled={submitting}>
           {submitting ? (
             <ActivityIndicator color="#fff" />
@@ -399,4 +486,9 @@ const styles = StyleSheet.create({
   signatureNote: { fontSize: 12, color: "#718096", fontStyle: "italic", marginBottom: 12, lineHeight: 18 },
   submitButton: { backgroundColor: "#276749", borderRadius: 12, padding: 18, alignItems: "center", marginTop: 8, shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.15, shadowRadius: 4, elevation: 3 },
   submitText: { color: "#fff", fontSize: 17, fontWeight: "700" },
+  actionRow: { flexDirection: "row", gap: 12, marginTop: 8 },
+  actionButton: { flex: 1, borderRadius: 12, padding: 16, alignItems: "center", justifyContent: "center", flexDirection: "row" },
+  emailButton: { backgroundColor: "#276749", shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.15, shadowRadius: 4, elevation: 3 },
+  shareButton: { backgroundColor: "#fff", borderWidth: 2, borderColor: "#2b6cb0" },
+  actionButtonText: { color: "#fff", fontSize: 15, fontWeight: "700" },
 });

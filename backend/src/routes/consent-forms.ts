@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { prisma } from "../prisma";
 import { auth } from "../auth";
+import { generateConsentFormPdf } from "../lib/generate-pdf";
 
 const consentFormRouter = new Hono<{
   Variables: {
@@ -75,6 +76,31 @@ consentFormRouter.post("/:id/submit", async (c) => {
     data: { status: "submitted", submittedAt: new Date() },
   });
   return c.json({ data: form });
+});
+
+// GET /api/consent-forms/:id/pdf — generate and return PDF
+consentFormRouter.get("/:id/pdf", async (c) => {
+  const user = c.get("user");
+  if (!user) return c.json({ error: { message: "Unauthorized" } }, 401);
+  const id = c.req.param("id");
+  const form = await prisma.consentForm.findUnique({ where: { id } });
+  if (!form || form.userId !== user.id) {
+    return c.json({ error: { message: "Not found" } }, 404);
+  }
+  try {
+    const pdfBuffer = await generateConsentFormPdf(form as unknown as Record<string, unknown>);
+    const filename = `consent-form-${(form.patientName as string | null)?.replace(/\s+/g, "-") || id}.pdf`;
+    return new Response(pdfBuffer.buffer as ArrayBuffer, {
+      headers: {
+        "Content-Type": "application/pdf",
+        "Content-Disposition": `attachment; filename="${filename}"`,
+        "Content-Length": pdfBuffer.length.toString(),
+      },
+    });
+  } catch (err) {
+    console.error("PDF generation error:", err);
+    return c.json({ error: { message: "Failed to generate PDF" } }, 500);
+  }
 });
 
 export { consentFormRouter };
