@@ -213,12 +213,12 @@ export default function TimeOffScreen() {
               testID="end-date-input"
             />
 
-            <Text style={styles.inputLabel}>Reason (optional)</Text>
+            <Text style={styles.inputLabel}>Reason</Text>
             <TextInput
               style={[styles.input, styles.textArea]}
               value={reason}
               onChangeText={setReason}
-              placeholder="Vacation, personal, etc."
+              placeholder="Describe your reason for time off"
               multiline
               numberOfLines={3}
               textAlignVertical="top"
@@ -234,9 +234,9 @@ export default function TimeOffScreen() {
                 <Text style={styles.cancelBtnText}>Cancel</Text>
               </Pressable>
               <Pressable
-                style={[styles.saveBtn, (!startDate.trim() || !endDate.trim()) && styles.saveBtnDisabled]}
+                style={[styles.saveBtn, (!startDate.trim() || !endDate.trim() || !reason.trim()) && styles.saveBtnDisabled]}
                 onPress={() => createMutation.mutate({ startDate: startDate.trim(), endDate: endDate.trim(), reason: reason.trim() })}
-                disabled={createMutation.isPending || !startDate.trim() || !endDate.trim()}
+                disabled={createMutation.isPending || !startDate.trim() || !endDate.trim() || !reason.trim()}
                 testID="submit-button"
               >
                 {createMutation.isPending ? (
