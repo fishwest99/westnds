@@ -50,6 +50,15 @@ const TILES = [
     bg: "#ebf4ff",
   },
   {
+    id: "hp-scan",
+    label: "H&P",
+    icon: "📷",
+    description: "Scan & upload documents",
+    href: "/hp-scan" as const,
+    accent: "#2d3748",
+    bg: "#edf2f7",
+  },
+  {
     id: "cases",
     label: "Previous Cases",
     icon: "📋",
