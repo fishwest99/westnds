@@ -382,8 +382,8 @@ export default function EditBillingFormScreen() {
                 testID="patient-name-input"
               />
             </View>
-            <View style={styles.row}>
-              <View style={[styles.field, { flex: 1, marginRight: 8 }]}>
+            <View style={[styles.row, !isTablet && { flexDirection: "column" }]}>
+              <View style={[styles.field, isTablet && { flex: 1, marginRight: 8 }]}>
                 <Text style={styles.fieldLabel}>Age</Text>
                 <TextInput
                   style={styles.input}
@@ -393,7 +393,7 @@ export default function EditBillingFormScreen() {
                   keyboardType="numeric"
                 />
               </View>
-              <View style={[styles.field, { flex: 2 }]}>
+              <View style={[styles.field, isTablet && { flex: 2 }]}>
                 <Text style={styles.fieldLabel}>Gender</Text>
                 <View style={styles.row}>
                   <View style={{ marginRight: 16 }}>
