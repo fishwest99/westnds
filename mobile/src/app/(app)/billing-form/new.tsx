@@ -96,20 +96,21 @@ function Checkbox({ label, value, onChange }: { label: string; value: boolean; o
 function ModalityRow({ label, cptCode, value, onChange }: {
   label: string; cptCode: string; value: string; onChange: (v: string) => void;
 }) {
+  const isYes = value === "yes";
   return (
     <View style={styles.modalityRow}>
       <View style={styles.modalityLabelCol}>
         <Text style={styles.modalityLabel}>{label}</Text>
         {cptCode ? <Text style={styles.cptCode}>{cptCode}</Text> : null}
       </View>
-      <TextInput
-        style={styles.modalityInput}
-        value={value}
-        onChangeText={onChange}
-        placeholder="Qty"
-        keyboardType="numeric"
-        textAlign="center"
-      />
+      <Pressable
+        style={[styles.modalityToggle, isYes && styles.modalityToggleOn]}
+        onPress={() => onChange(isYes ? "" : "yes")}
+      >
+        <Text style={[styles.modalityToggleText, isYes && styles.modalityToggleTextOn]}>
+          {isYes ? "Yes" : "No"}
+        </Text>
+      </Pressable>
     </View>
   );
 }
@@ -450,7 +451,7 @@ export default function NewBillingFormScreen() {
             <Text style={styles.sectionTitle}>Modalities — Evoked Potentials</Text>
             <View style={styles.modalityHeader}>
               <Text style={[styles.modalityHeaderText, { flex: 1 }]}>Procedure</Text>
-              <Text style={[styles.modalityHeaderText, { width: 60, textAlign: "center" }]}>Qty</Text>
+              <Text style={[styles.modalityHeaderText, { width: 52, textAlign: "center" }]}>Used</Text>
             </View>
             <ModalityRow
               label="Visual" cptCode="95930"
@@ -487,7 +488,7 @@ export default function NewBillingFormScreen() {
             <Text style={styles.sectionTitle}>Modalities — EMG / Nerve Conduction / Pedicle Screw Stim</Text>
             <View style={styles.modalityHeader}>
               <Text style={[styles.modalityHeaderText, { flex: 1 }]}>Procedure</Text>
-              <Text style={[styles.modalityHeaderText, { width: 60, textAlign: "center" }]}>Qty</Text>
+              <Text style={[styles.modalityHeaderText, { width: 52, textAlign: "center" }]}>Used</Text>
             </View>
             <ModalityRow
               label="Two Extremities EMG" cptCode="95861"
@@ -837,6 +838,10 @@ const styles = StyleSheet.create({
   modalityLabel: { fontSize: 14, color: "#2d3748", fontWeight: "500" },
   cptCode: { fontSize: 11, color: "#718096", marginTop: 1 },
   modalityInput: { width: 60, borderWidth: 1, borderColor: "#e2e8f0", borderRadius: 6, padding: 8, fontSize: 14, backgroundColor: "#f8fafc", color: "#1a202c" },
+  modalityToggle: { width: 52, height: 32, borderRadius: 8, borderWidth: 1.5, borderColor: "#cbd5e0", backgroundColor: "#f8fafc", justifyContent: "center", alignItems: "center" },
+  modalityToggleOn: { backgroundColor: "#276749", borderColor: "#276749" },
+  modalityToggleText: { fontSize: 13, fontWeight: "700" as const, color: "#a0aec0" },
+  modalityToggleTextOn: { color: "#fff" },
   divider: { borderTopWidth: 1, borderTopColor: "#e2e8f0", marginVertical: 16 },
   sigGroupLabel: { fontSize: 13, fontWeight: "700", color: "#2b6cb0", textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 10, marginTop: 4 },
   submitButton: { backgroundColor: "#276749", borderRadius: 12, padding: 18, alignItems: "center", marginTop: 8, shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.15, shadowRadius: 4, elevation: 3 },

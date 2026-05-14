@@ -21,11 +21,15 @@ function field(label: string, value: string): Content {
   return { text: [{ text: `${label}: `, bold: true }, value] };
 }
 
-function cptRows(entries: [string, string][], f: (key: string) => string): TableCell[][] {
-  return entries.map(([label, key]) => [
-    { text: label } as TableCell,
-    { text: f(key), alignment: "center" as const } as TableCell,
-  ]);
+function cptRows(entries: [string, string][], f: (key: string) => string, yesNo = false): TableCell[][] {
+  return entries.map(([label, key]) => {
+    const raw = f(key);
+    const display = yesNo ? (raw === "yes" ? "Yes" : "No") : raw;
+    return [
+      { text: label } as TableCell,
+      { text: display, alignment: "center" as const } as TableCell,
+    ];
+  });
 }
 
 export async function generateBillingFormPdf(form: Record<string, unknown>): Promise<Buffer> {
@@ -40,7 +44,7 @@ export async function generateBillingFormPdf(form: Record<string, unknown>): Pro
     ["95928 — Upper Motor EP (TcMEP)", "cptUpperMotorEP"],
     ["95929 — Lower Motor EP (TcMEP)", "cptLowerMotorEP"],
     ["95941 — RLN Monitoring", "cptRLNMonitoring"],
-  ], f);
+  ], f, true);
 
   const emgRows = cptRows([
     ["95907 — 2 Ext. EMG", "cptTwoExtEMG"],
@@ -50,7 +54,7 @@ export async function generateBillingFormPdf(form: Record<string, unknown>): Pro
     ["95829 — Electrocorticography", "cptElectrocorticography"],
     ["Stat Fee", "cptStatFee"],
     ["95940 — Standby", "cptStandby"],
-  ], f);
+  ], f, true);
 
   const techSig = f("technicianSignature");
   const rnSig = f("rnSignature");
@@ -138,7 +142,7 @@ export async function generateBillingFormPdf(form: Record<string, unknown>): Pro
                 ],
                 [
                   { text: "CPT Code / Description", bold: true } as TableCell,
-                  { text: "QTY", bold: true, alignment: "center" as const } as TableCell,
+                  { text: "Used", bold: true, alignment: "center" as const } as TableCell,
                 ],
                 ...evokedRows,
               ],
@@ -157,7 +161,7 @@ export async function generateBillingFormPdf(form: Record<string, unknown>): Pro
                 ],
                 [
                   { text: "CPT Code / Description", bold: true } as TableCell,
-                  { text: "QTY", bold: true, alignment: "center" as const } as TableCell,
+                  { text: "Used", bold: true, alignment: "center" as const } as TableCell,
                 ],
                 ...emgRows,
               ],
