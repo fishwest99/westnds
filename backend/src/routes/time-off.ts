@@ -9,12 +9,17 @@ const timeOffRouter = new Hono<{
   };
 }>();
 
-// GET /api/time-off/my-profile — return isManager flag for current user
+const OWNER_EMAIL = "west_nds@yahoo.com";
+
+// GET /api/time-off/my-profile — return role info for current user
 timeOffRouter.get("/my-profile", async (c) => {
   const user = c.get("user");
   if (!user) return c.json({ error: { message: "Unauthorized" } }, 401);
   const dbUser = await prisma.user.findUnique({ where: { id: user.id } });
-  return c.json({ data: { isManager: dbUser?.isManager ?? false } });
+  const isOwner = user.email === OWNER_EMAIL;
+  const isManager = dbUser?.isManager ?? false;
+  const roleLabel = isOwner ? "Owner" : isManager ? "Manager" : "Technician";
+  return c.json({ data: { isManager, isOwner, roleLabel } });
 });
 
 // GET /api/time-off — list requests (managers see all, techs see their own)

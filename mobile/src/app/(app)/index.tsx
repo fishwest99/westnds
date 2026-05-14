@@ -136,6 +136,13 @@ export default function HomeScreen() {
   const userName = session?.user?.name ?? "there";
   const firstName = userName.split(" ")[0];
 
+  const { data: profile } = useQuery({
+    queryKey: ["user-profile"],
+    queryFn: () => api.get<{ isManager: boolean; isOwner: boolean; roleLabel: string }>("/api/time-off/my-profile"),
+    staleTime: 1000 * 60 * 5,
+  });
+  const roleLabel = profile?.roleLabel ?? (isOwner ? "Owner" : "Technician");
+
   const { data: onCallEntries } = useQuery({
     queryKey: ["on-call"],
     queryFn: () => api.get<OnCallEntry[]>("/api/on-call"),
@@ -183,6 +190,21 @@ export default function HomeScreen() {
         <View style={styles.welcomeCard}>
           <Text style={styles.welcomeGreeting}>Welcome back,</Text>
           <Text style={styles.welcomeName}>{firstName}</Text>
+          <View style={styles.roleBadgeRow}>
+            <View style={[
+              styles.roleBadge,
+              roleLabel === "Owner" && styles.roleBadgeOwner,
+              roleLabel === "Manager" && styles.roleBadgeManager,
+              roleLabel === "Technician" && styles.roleBadgeTech,
+            ]}>
+              <Text style={[
+                styles.roleBadgeText,
+                roleLabel === "Owner" && styles.roleBadgeTextOwner,
+                roleLabel === "Manager" && styles.roleBadgeTextManager,
+                roleLabel === "Technician" && styles.roleBadgeTextTech,
+              ]}>{roleLabel}</Text>
+            </View>
+          </View>
           <Text style={styles.welcomeSub}>What would you like to do today?</Text>
         </View>
 
@@ -323,6 +345,28 @@ const styles = StyleSheet.create({
     color: "#bee3f8",
     marginTop: 6,
   },
+  roleBadgeRow: {
+    flexDirection: "row",
+    marginTop: 8,
+    marginBottom: 2,
+  },
+  roleBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 20,
+  },
+  roleBadgeOwner: { backgroundColor: "#f6e05e" },
+  roleBadgeManager: { backgroundColor: "rgba(255,255,255,0.2)" },
+  roleBadgeTech: { backgroundColor: "rgba(255,255,255,0.15)" },
+  roleBadgeText: {
+    fontSize: 12,
+    fontWeight: "700",
+    letterSpacing: 0.5,
+    textTransform: "uppercase",
+  },
+  roleBadgeTextOwner: { color: "#744210" },
+  roleBadgeTextManager: { color: "#fff" },
+  roleBadgeTextTech: { color: "#bee3f8" },
 
   tilesGrid: {
     paddingHorizontal: 16,
