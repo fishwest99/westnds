@@ -129,7 +129,7 @@ export async function generateCaseStudyFormPdf(form: Record<string, unknown>): P
         bold: true,
         marginBottom: 2,
       } as Content,
-      checkboxRow(["CPZ", "C3", "C4", "C5", "FPZ", "A1", "A2", "C1", "C2"], electrodePickupSites),
+      checkboxRow(["CPZ", "FPZ", "C1", "C2", "CP3", "CP4", "C5", "A1", "A2"], electrodePickupSites),
       { text: "", marginBottom: 2 } as Content,
       {
         text: [{ text: "Other: ", bold: true }, f("electrodeOther")],

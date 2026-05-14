@@ -74,7 +74,7 @@ const PROCEDURE_GROUPS = [
   },
 ];
 
-const ELECTRODE_SITES = ["CPZ", "C3", "C4", "C5", "FPZ", "A1", "A2", "C1", "C2"];
+const ELECTRODE_SITES = ["CPZ", "FPZ", "C1", "C2", "CP3", "CP4", "C5", "A1", "A2"];
 
 const EP_NERVES = [
   "Median", "Ulnar", "Radial", "C5", "C6", "C7", "C8",
