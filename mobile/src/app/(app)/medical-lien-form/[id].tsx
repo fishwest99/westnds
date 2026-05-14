@@ -281,42 +281,42 @@ export default function EditMedicalLienFormScreen() {
 
             <View style={styles.legalBlock}>
               <Text style={styles.legalBody}>
-                This Medical Lien Agreement is entered into by and between the undersigned patient and the medical provider(s) listed below, and is intended to create a binding lien on any settlement, judgment, or recovery arising from the Patient's personal injury claim.
+                {`This Medical Lien Agreement ("Agreement") is entered into by and between the undersigned patient ("Patient") and the medical provider(s) listed below, and is intended to create a binding lien on any settlement, judgment, or recovery arising from the Patient's personal injury claim.`}
               </Text>
             </View>
 
             <View style={styles.legalBlock}>
               <Text style={styles.legalHeader}>PARTIES</Text>
               <Text style={styles.legalBody}>
-                Medical Provider(s): WEST NDX - READING and/or WEST NDX - SERVICES
+                {`This Agreement is made between:\n   Medical Provider(s):  WEST NDX - READING and/or WEST NDX - SERVICES\n   Attorney(s) Representing Patient / Case Manager`}
               </Text>
             </View>
 
             <View style={styles.legalBlock}>
               <Text style={styles.legalHeader}>AUTHORIZATION TO PAY PROVIDER</Text>
               <Text style={styles.legalBody}>
-                The Patient hereby authorizes and directs any attorney, insurance company, or other party holding funds from the Patient's personal injury claim to pay directly to the medical provider(s) the amount due for services rendered, from the Patient's share of any settlement, judgment, or insurance proceeds.
+                {`The undersigned Patient hereby authorizes and irrevocably instructs their attorney(s) to pay directly to Provider any and all sums due for medical services rendered to the Patient from the proceeds of any settlement, judgment, or verdict obtained in connection with the personal injury claim arising from the incident described above.`}
               </Text>
             </View>
 
             <View style={styles.legalBlock}>
               <Text style={styles.legalHeader}>NOTICE OF LIEN</Text>
               <Text style={styles.legalBody}>
-                This agreement constitutes a valid and enforceable lien against any funds recovered by the Patient through settlement, litigation, or otherwise in connection with the personal injury claim. The lien shall remain in effect until all charges for services rendered are paid in full.
+                {`This document shall serve as formal notice to the attorney(s) of the Provider's lien against any recovery obtained by or on behalf of the Patient. The lien is effective immediately upon the Provider's rendering of services, and shall remain valid and enforceable regardless of whether the attorney(s) execute this Agreement below.`}
               </Text>
             </View>
 
             <View style={styles.legalBlock}>
               <Text style={styles.legalHeader}>PATIENT'S PERSONAL LIABILITY</Text>
               <Text style={styles.legalBody}>
-                The Patient acknowledges personal liability for all charges incurred. If no recovery is obtained, or if the recovery is insufficient to cover all charges, the Patient remains personally responsible for payment of the balance due.
+                {`The Patient acknowledges and agrees that they remain fully and personally responsible for all charges for medical services rendered by the Provider, regardless of the outcome of the personal injury claim. The Patient's obligation to pay is not contingent upon any recovery from an insurer, defendant, or third party.`}
               </Text>
             </View>
 
             <View style={[styles.legalBlock, { marginBottom: 0 }]}>
               <Text style={styles.legalHeader}>ATTORNEY'S ACKNOWLEDGMENT (Optional)</Text>
               <Text style={styles.legalBody}>
-                By signing below, the Patient's attorney acknowledges notice of this lien and agrees to honor it from any funds held on behalf of the Patient, and to notify the medical provider prior to disbursing any settlement or judgment proceeds.
+                {`The undersigned attorney acknowledges receipt of this lien and agrees to honor its terms to the extent allowed by law.`}
               </Text>
             </View>
           </View>
