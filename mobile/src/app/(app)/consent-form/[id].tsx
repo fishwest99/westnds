@@ -411,13 +411,13 @@ export default function EditConsentFormScreen() {
           {/* Legal Text */}
           <View style={styles.section}>
             <Text style={styles.legalHeading}>Informed Consent</Text>
-            <Text style={styles.legalText}>I hereby authorize West Neurodigmostics-Reading, LLC and West Neurodigmostics-Services, LLC - (West NDx), Out-Of-Network provider(s) to perform Intraoperative Neurophysiologic Monitoring as requested by my surgeon.</Text>
+            <Text style={styles.legalText}>I hereby authorize West Neurodigmostics-Reading, LLC and West Neurodigmostics-Services, LLC - (West NDx), Out-Of-Network provider(s) to perform Intraoperative Neurophysiologic Monitoring as requested by my surgeon. Testing modalities may include, but are not limited to Transcranial Motor Evoked Potentials (TcMEP), Somatosensory Evoked Potentials (SSEP), Brainstem Auditory Evoked Potentials (BAEP), Electroencephalography (EEG) and Electromyography (EMG). I authorize West NDx to share the data obtained during the monitoring with a Physician, either, in person or via secure internet transmission, for the purpose of interpreting the data.</Text>
             <Text style={styles.legalHeading}>Assignment of Rights and Benefits</Text>
-            <Text style={styles.legalText}>In consideration of the medical services to be provided, I understand that I am responsible for payment for these services in accordance with the rates and terms now in effect at West NDx.</Text>
+            <Text style={styles.legalText}>In consideration of the medical services to be provided, I understand that I am responsible for payment for these services in accordance with the rates and terms now in effect at West NDx, to the extent that I am legally responsible. I hereby assign West NDx, Physician, or affiliated third-party company any and all benefits and all interest and rights for services rendered under any insurance policy or prepaid healthcare plan.</Text>
             <Text style={styles.legalHeading}>Authorization to Release Information</Text>
-            <Text style={styles.legalText}>I authorize West NDx and affiliates to have full and complete access to my hospital medical records and to furnish requested information to any insurance or third-party payer.</Text>
+            <Text style={styles.legalText}>I authorize West NDx and affiliates to have full and complete access to my hospital medical records and to furnish requested information to any insurance or third-party payer, for the purpose of obtaining payment on the account.</Text>
             <Text style={styles.legalHeading}>Surprise/Balance Billing Disclosure</Text>
-            <Text style={styles.legalText}>I have been made aware that West NDx are out-of-network providers prior to this procedure. West NDx will not bill me for additional costs.</Text>
+            <Text style={styles.legalText}>I have been made aware that West NDx are out-of-network providers prior to this procedure. I understand the most I can be billed for covered services is my in-network cost-sharing amount. West NDx will not bill me for additional costs.</Text>
             <Text style={styles.legalHeading}>Financial Responsibility</Text>
             <Text style={styles.legalText}>I hereby authorize West NDx to pursue payment for the IOM services performed on the procedure on this date.</Text>
           </View>
