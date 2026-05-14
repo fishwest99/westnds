@@ -52,15 +52,18 @@ type StaffOverviewData = {
   staff: StaffMemberSummary[];
 };
 
-type ImportableBillingForm = {
+type MissedHoursRequest = {
   id: string;
-  patientName: string;
-  facility: string;
+  facilityName: string;
   date: string;
   startTime: string;
   endTime: string;
-  totalHours: string;
-  drivingTime: string;
+  travelMinutes: number;
+  notes: string;
+  reason: string;
+  status: "pending" | "approved" | "denied";
+  createdAt: string;
+  user: { name: string; email: string };
 };
 
 type Period = "day" | "week" | "month" | "year";
@@ -104,6 +107,16 @@ const EMPTY_FORM = {
   notes: "",
 };
 
+const EMPTY_REQUEST_FORM = {
+  facilityName: "",
+  date: getTodayString(),
+  startTime: "",
+  endTime: "",
+  travelMinutes: "",
+  notes: "",
+  reason: "",
+};
+
 const OWNER_EMAIL = "west_nds@yahoo.com";
 
 export default function TimeTrackingScreen() {
@@ -115,27 +128,36 @@ export default function TimeTrackingScreen() {
   const { data: session } = useSession();
   const isOwner = (session?.user?.email ?? "") === OWNER_EMAIL;
 
-  // View toggle state (owner only)
-  const [view, setView] = useState<"mine" | "staff">("mine");
+  // Fetch profile to get isManager flag
+  const { data: profile } = useQuery({
+    queryKey: ["user-profile"],
+    queryFn: () =>
+      api.get<{ isManager: boolean; isOwner: boolean; roleLabel: string }>(
+        "/api/time-off/my-profile"
+      ),
+    staleTime: 1000 * 60 * 5,
+  });
+
+  const isManager = profile?.isManager ?? isOwner;
+
+  // View toggle state (manager/owner only): "mine" | "staff" | "pending-requests"
+  const [view, setView] = useState<"mine" | "staff" | "pending-requests">("mine");
 
   // Expanded staff member state
   const [expandedUserId, setExpandedUserId] = useState<string | null>(null);
 
-  // Add modal state
+  // Add modal state (manager only)
   const [addVisible, setAddVisible] = useState(false);
   const [form, setForm] = useState({ ...EMPTY_FORM });
 
-  // Edit modal state
+  // Edit modal state (manager only)
   const [editVisible, setEditVisible] = useState(false);
   const [editEntry, setEditEntry] = useState<WorkEntry | null>(null);
   const [editForm, setEditForm] = useState({ ...EMPTY_FORM });
 
-  // Import from billing sheets state
-  const [showImportModal, setShowImportModal] = useState(false);
-  const [importableForms, setImportableForms] = useState<ImportableBillingForm[]>([]);
-  const [selectedImportIds, setSelectedImportIds] = useState<Set<string>>(new Set());
-  const [loadingImportable, setLoadingImportable] = useState(false);
-  const [importing, setImporting] = useState(false);
+  // Missed hours request modal (technician only)
+  const [requestVisible, setRequestVisible] = useState(false);
+  const [requestForm, setRequestForm] = useState({ ...EMPTY_REQUEST_FORM });
 
   // Summary query (my hours)
   const {
@@ -151,7 +173,7 @@ export default function TimeTrackingScreen() {
       ),
   });
 
-  // Staff overview query (owner only)
+  // Staff overview query (manager only)
   const {
     data: staffOverview,
     isLoading: staffLoading,
@@ -163,11 +185,41 @@ export default function TimeTrackingScreen() {
       api.get<StaffOverviewData>(
         `/api/work-entries/staff-overview?period=${period}&referenceDate=${today}`
       ),
-    enabled: isOwner && view === "staff",
+    enabled: isManager && view === "staff",
   });
 
-  const entries: WorkEntry[] = summary?.entries ?? [];
+  // My missed hours requests (technician)
+  const {
+    data: myRequests,
+    isLoading: myRequestsLoading,
+    refetch: refetchMyRequests,
+    isRefetching: myRequestsRefetching,
+  } = useQuery({
+    queryKey: ["missed-hours-requests-mine"],
+    queryFn: () =>
+      api.get<MissedHoursRequest[]>("/api/missed-hours-requests/my-requests"),
+    enabled: !isManager,
+  });
 
+  // Pending missed hours requests (manager only)
+  const {
+    data: pendingRequests,
+    isLoading: pendingRequestsLoading,
+    refetch: refetchPending,
+    isRefetching: pendingRefetching,
+  } = useQuery({
+    queryKey: ["missed-hours-requests-pending"],
+    queryFn: () =>
+      api.get<MissedHoursRequest[]>("/api/missed-hours-requests/pending"),
+    enabled: isManager && view === "pending-requests",
+  });
+
+  const pendingCount = pendingRequests?.length ?? 0;
+
+  const entries: WorkEntry[] = summary?.entries ?? [];
+  const myRequestsList: MissedHoursRequest[] = myRequests ?? [];
+
+  // Manager mutations
   const createMutation = useMutation({
     mutationFn: (body: {
       facilityName: string;
@@ -215,7 +267,43 @@ export default function TimeTrackingScreen() {
     },
   });
 
+  // Technician: submit missed hours request
+  const submitRequestMutation = useMutation({
+    mutationFn: (body: {
+      facilityName: string;
+      date: string;
+      startTime: string;
+      endTime: string;
+      travelMinutes: number;
+      notes: string;
+      reason: string;
+    }) => api.post<MissedHoursRequest>("/api/missed-hours-requests", body),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["missed-hours-requests-mine"] });
+      setRequestVisible(false);
+      setRequestForm({ ...EMPTY_REQUEST_FORM });
+    },
+  });
+
+  // Manager: approve / deny
+  const approveMutation = useMutation({
+    mutationFn: (id: string) =>
+      api.put<MissedHoursRequest>(`/api/missed-hours-requests/${id}/approve`, {}),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["missed-hours-requests-pending"] });
+    },
+  });
+
+  const denyMutation = useMutation({
+    mutationFn: (id: string) =>
+      api.put<MissedHoursRequest>(`/api/missed-hours-requests/${id}/deny`, {}),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["missed-hours-requests-pending"] });
+    },
+  });
+
   const openEdit = (entry: WorkEntry) => {
+    if (!isManager) return;
     setEditEntry(entry);
     setEditForm({
       facilityName: entry.facilityName,
@@ -254,6 +342,18 @@ export default function TimeTrackingScreen() {
     });
   };
 
+  const handleSubmitRequest = () => {
+    submitRequestMutation.mutate({
+      facilityName: requestForm.facilityName.trim(),
+      date: requestForm.date.trim(),
+      startTime: requestForm.startTime.trim(),
+      endTime: requestForm.endTime.trim(),
+      travelMinutes: parseInt(requestForm.travelMinutes || "0", 10),
+      notes: requestForm.notes.trim(),
+      reason: requestForm.reason.trim(),
+    });
+  };
+
   const isAddValid =
     form.facilityName.trim().length > 0 &&
     form.date.trim().length > 0 &&
@@ -266,34 +366,12 @@ export default function TimeTrackingScreen() {
     editForm.startTime.trim().length > 0 &&
     editForm.endTime.trim().length > 0;
 
-  const openImportModal = async () => {
-    setLoadingImportable(true);
-    setShowImportModal(true);
-    setSelectedImportIds(new Set());
-    try {
-      const result = await api.get<ImportableBillingForm[]>("/api/work-entries/importable-billing-forms");
-      setImportableForms(result ?? []);
-    } finally {
-      setLoadingImportable(false);
-    }
-  };
-
-  const handleImport = async () => {
-    if (selectedImportIds.size === 0) return;
-    setImporting(true);
-    try {
-      await api.post<{ imported: number }>("/api/work-entries/import-from-billing", {
-        billingFormIds: Array.from(selectedImportIds),
-      });
-      queryClient.invalidateQueries({ queryKey: ["work-entries"] });
-      queryClient.invalidateQueries({ queryKey: ["work-summary"] });
-      setShowImportModal(false);
-      setImportableForms([]);
-      setSelectedImportIds(new Set());
-    } finally {
-      setImporting(false);
-    }
-  };
+  const isRequestValid =
+    requestForm.facilityName.trim().length > 0 &&
+    requestForm.date.trim().length > 0 &&
+    requestForm.startTime.trim().length > 0 &&
+    requestForm.endTime.trim().length > 0 &&
+    requestForm.reason.trim().length > 0;
 
   // Computed staff totals
   const staffList: StaffMemberSummary[] = staffOverview?.staff ?? [];
@@ -420,6 +498,314 @@ export default function TimeTrackingScreen() {
     );
   };
 
+  const renderPendingRequestsView = () => {
+    if (pendingRequestsLoading) {
+      return (
+        <View style={styles.centered} testID="pending-requests-loading">
+          <ActivityIndicator size="large" color="#2c7a7b" />
+          <Text style={styles.loadingText}>Loading requests...</Text>
+        </View>
+      );
+    }
+
+    const requests: MissedHoursRequest[] = pendingRequests ?? [];
+
+    return (
+      <FlatList
+        data={requests}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={
+          requests.length === 0 ? styles.emptyContainer : styles.listContent
+        }
+        refreshControl={
+          <RefreshControl
+            refreshing={pendingRefetching}
+            onRefresh={refetchPending}
+            tintColor="#2c7a7b"
+          />
+        }
+        testID="pending-requests-list"
+        ListEmptyComponent={
+          <View style={styles.emptyState} testID="pending-requests-empty">
+            <Text style={styles.emptyIcon}>✓</Text>
+            <Text style={styles.emptyTitle}>All caught up</Text>
+            <Text style={styles.emptyText}>
+              No pending missed hours requests to review.
+            </Text>
+          </View>
+        }
+        renderItem={({ item }) => {
+          const worked = computeWorkedMinutes(item.startTime, item.endTime);
+          const isApproving = approveMutation.isPending && approveMutation.variables === item.id;
+          const isDenying = denyMutation.isPending && denyMutation.variables === item.id;
+          return (
+            <View style={requestStyles.card} testID={`pending-request-${item.id}`}>
+              <View style={requestStyles.cardHeader}>
+                <Text style={requestStyles.techName}>{item.user.name}</Text>
+                <View style={[requestStyles.badge, requestStyles.badgePending]}>
+                  <Text style={[requestStyles.badgeText, requestStyles.badgeTextPending]}>Pending</Text>
+                </View>
+              </View>
+
+              <Text style={requestStyles.facility}>{item.facilityName}</Text>
+
+              <View style={requestStyles.metaRow}>
+                <Text style={requestStyles.metaText}>{item.date}</Text>
+                <Text style={requestStyles.metaDot}>·</Text>
+                <Text style={requestStyles.metaText}>{item.startTime} – {item.endTime}</Text>
+                <Text style={requestStyles.metaDot}>·</Text>
+                <Text style={requestStyles.metaTime}>{formatMinutes(worked)}</Text>
+              </View>
+
+              {item.travelMinutes > 0 ? (
+                <View style={[styles.travelBadge, { alignSelf: "flex-start", marginTop: 6 }]}>
+                  <Text style={styles.travelBadgeText}>
+                    {formatMinutes(item.travelMinutes)} driving
+                  </Text>
+                </View>
+              ) : null}
+
+              <View style={requestStyles.reasonBox}>
+                <Text style={requestStyles.reasonLabel}>Reason</Text>
+                <Text style={requestStyles.reasonText}>{item.reason}</Text>
+              </View>
+
+              {item.notes ? (
+                <Text style={requestStyles.notes} numberOfLines={2}>{item.notes}</Text>
+              ) : null}
+
+              <View style={requestStyles.actions}>
+                <Pressable
+                  style={({ pressed }) => [
+                    requestStyles.denyBtn,
+                    pressed && { opacity: 0.8 },
+                    isDenying && { opacity: 0.6 },
+                  ]}
+                  onPress={() => denyMutation.mutate(item.id)}
+                  disabled={isDenying || isApproving}
+                  testID={`deny-request-${item.id}`}
+                >
+                  {isDenying ? (
+                    <ActivityIndicator color="#e53e3e" size="small" />
+                  ) : (
+                    <Text style={requestStyles.denyBtnText}>Deny</Text>
+                  )}
+                </Pressable>
+                <Pressable
+                  style={({ pressed }) => [
+                    requestStyles.approveBtn,
+                    pressed && { opacity: 0.8 },
+                    isApproving && { opacity: 0.6 },
+                  ]}
+                  onPress={() => approveMutation.mutate(item.id)}
+                  disabled={isApproving || isDenying}
+                  testID={`approve-request-${item.id}`}
+                >
+                  {isApproving ? (
+                    <ActivityIndicator color="#fff" size="small" />
+                  ) : (
+                    <Text style={requestStyles.approveBtnText}>Approve</Text>
+                  )}
+                </Pressable>
+              </View>
+            </View>
+          );
+        }}
+      />
+    );
+  };
+
+  const renderMyHoursView = () => {
+    if (summaryLoading) {
+      return (
+        <View style={styles.centered} testID="loading-indicator">
+          <ActivityIndicator size="large" color="#2c7a7b" />
+          <Text style={styles.loadingText}>Loading...</Text>
+        </View>
+      );
+    }
+
+    return (
+      <FlatList
+        data={entries}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={styles.listContent}
+        refreshControl={
+          <RefreshControl
+            refreshing={summaryRefetching || myRequestsRefetching}
+            onRefresh={() => {
+              refetchSummary();
+              if (!isManager) refetchMyRequests();
+            }}
+            tintColor="#2c7a7b"
+          />
+        }
+        ListHeaderComponent={
+          <View style={styles.summaryCard} testID="summary-card">
+            <Text style={styles.summaryPeriodLabel}>
+              {summary?.periodLabel ?? ""}
+            </Text>
+            <Text style={styles.summaryHours}>
+              {formatMinutes(summary?.totalWorkedMinutes ?? 0)}
+            </Text>
+            <Text style={styles.summaryHoursLabel}>worked</Text>
+            <View style={styles.summaryRow}>
+              <View style={styles.summaryMetric}>
+                <Text style={styles.summaryMetricValue}>
+                  {formatMinutes(summary?.totalTravelMinutes ?? 0)}
+                </Text>
+                <Text style={styles.summaryMetricLabel}>Travel</Text>
+              </View>
+              <View style={styles.summaryDivider} />
+              <View style={styles.summaryMetric}>
+                <Text style={styles.summaryMetricValue}>
+                  {summary?.entryCount ?? 0}
+                </Text>
+                <Text style={styles.summaryMetricLabel}>
+                  {summary?.entryCount === 1 ? "Entry" : "Entries"}
+                </Text>
+              </View>
+            </View>
+          </View>
+        }
+        ListEmptyComponent={
+          entries.length === 0 ? (
+            <View style={styles.emptyState} testID="empty-state">
+              <Text style={styles.emptyIcon}>⏱</Text>
+              <Text style={styles.emptyTitle}>No entries yet</Text>
+              <Text style={styles.emptyText}>
+                {isManager
+                  ? "Tap the + button to log your first shift."
+                  : "Submit a missed hours request if your hours are missing."}
+              </Text>
+            </View>
+          ) : null
+        }
+        renderItem={({ item }) => {
+          const worked = computeWorkedMinutes(item.startTime, item.endTime);
+          return (
+            <Pressable
+              style={({ pressed }) => [
+                styles.card,
+                { opacity: pressed && isManager ? 0.85 : 1 },
+              ]}
+              onPress={() => isManager ? openEdit(item) : undefined}
+              testID={`entry-item-${item.id}`}
+            >
+              <View style={styles.cardTop}>
+                <Text style={styles.cardFacility}>{item.facilityName}</Text>
+                <Text style={styles.cardWorked}>{formatMinutes(worked)}</Text>
+              </View>
+              <Text style={styles.cardDate}>{item.date}</Text>
+              <View style={styles.cardBottom}>
+                <Text style={styles.cardTime}>
+                  {item.startTime} – {item.endTime}
+                </Text>
+                {item.travelMinutes > 0 ? (
+                  <View style={styles.travelBadge}>
+                    <Text style={styles.travelBadgeText}>
+                      {formatMinutes(item.travelMinutes)} travel
+                    </Text>
+                  </View>
+                ) : null}
+              </View>
+              {item.notes ? (
+                <Text style={styles.cardNotes} numberOfLines={1}>
+                  {item.notes}
+                </Text>
+              ) : null}
+            </Pressable>
+          );
+        }}
+        ListFooterComponent={
+          !isManager ? (
+            <View style={{ paddingBottom: 24 }}>
+              {/* Request Missed Hours button */}
+              <Pressable
+                style={({ pressed }) => [
+                  requestStyles.requestBanner,
+                  pressed && { opacity: 0.85 },
+                ]}
+                onPress={() => {
+                  setRequestForm({ ...EMPTY_REQUEST_FORM, date: getTodayString() });
+                  setRequestVisible(true);
+                }}
+                testID="request-missed-hours-button"
+              >
+                <View style={requestStyles.requestBannerLeft}>
+                  <Text style={requestStyles.requestBannerIcon}>📝</Text>
+                  <View>
+                    <Text style={requestStyles.requestBannerTitle}>Request Missed Hours</Text>
+                    <Text style={requestStyles.requestBannerSub}>Hours missing? Submit a request for review</Text>
+                  </View>
+                </View>
+                <Text style={requestStyles.requestBannerArrow}>→</Text>
+              </Pressable>
+
+              {/* My Requests section */}
+              <Text style={requestStyles.sectionTitle}>My Requests</Text>
+
+              {myRequestsLoading ? (
+                <View style={{ paddingVertical: 24, alignItems: "center" }}>
+                  <ActivityIndicator color="#2c7a7b" />
+                </View>
+              ) : myRequestsList.length === 0 ? (
+                <View style={requestStyles.emptyRequests}>
+                  <Text style={requestStyles.emptyRequestsText}>No requests submitted yet.</Text>
+                </View>
+              ) : (
+                myRequestsList.map((req) => {
+                  const worked = computeWorkedMinutes(req.startTime, req.endTime);
+                  const badgeStyle =
+                    req.status === "approved"
+                      ? requestStyles.badgeApproved
+                      : req.status === "denied"
+                      ? requestStyles.badgeDenied
+                      : requestStyles.badgePending;
+                  const badgeTextStyle =
+                    req.status === "approved"
+                      ? requestStyles.badgeTextApproved
+                      : req.status === "denied"
+                      ? requestStyles.badgeTextDenied
+                      : requestStyles.badgeTextPending;
+                  const badgeLabel =
+                    req.status === "approved"
+                      ? "Approved"
+                      : req.status === "denied"
+                      ? "Denied"
+                      : "Pending";
+                  return (
+                    <View key={req.id} style={requestStyles.myRequestCard} testID={`my-request-${req.id}`}>
+                      <View style={requestStyles.cardHeader}>
+                        <Text style={requestStyles.facility}>{req.facilityName}</Text>
+                        <View style={[requestStyles.badge, badgeStyle]}>
+                          <Text style={[requestStyles.badgeText, badgeTextStyle]}>{badgeLabel}</Text>
+                        </View>
+                      </View>
+                      <View style={requestStyles.metaRow}>
+                        <Text style={requestStyles.metaText}>{req.date}</Text>
+                        <Text style={requestStyles.metaDot}>·</Text>
+                        <Text style={requestStyles.metaText}>{req.startTime} – {req.endTime}</Text>
+                        <Text style={requestStyles.metaDot}>·</Text>
+                        <Text style={requestStyles.metaTime}>{formatMinutes(worked)}</Text>
+                      </View>
+                      {req.travelMinutes > 0 ? (
+                        <View style={[styles.travelBadge, { alignSelf: "flex-start", marginTop: 4 }]}>
+                          <Text style={styles.travelBadgeText}>{formatMinutes(req.travelMinutes)} driving</Text>
+                        </View>
+                      ) : null}
+                      <Text style={requestStyles.reasonText} numberOfLines={2}>{req.reason}</Text>
+                    </View>
+                  );
+                })
+              )}
+            </View>
+          ) : null
+        }
+      />
+    );
+  };
+
   return (
     <SafeAreaView style={styles.safe} edges={["top"]} testID="time-tracking-screen">
       {/* Header */}
@@ -449,8 +835,8 @@ export default function TimeTrackingScreen() {
         ))}
       </View>
 
-      {/* View toggle (owner only) */}
-      {isOwner ? (
+      {/* View toggle (manager only) */}
+      {isManager ? (
         <View style={styles.viewToggle} testID="view-toggle">
           <Pressable
             style={[styles.viewToggleBtn, view === "mine" && styles.viewToggleBtnActive]}
@@ -474,122 +860,29 @@ export default function TimeTrackingScreen() {
               Staff Hours
             </Text>
           </Pressable>
+          <Pressable
+            style={[styles.viewToggleBtn, view === "pending-requests" && styles.viewToggleBtnActive]}
+            onPress={() => setView("pending-requests")}
+            testID="view-toggle-pending-requests"
+          >
+            <Text
+              style={[styles.viewToggleText, view === "pending-requests" && styles.viewToggleTextActive]}
+            >
+              {pendingCount > 0 ? `Pending (${pendingCount})` : "Pending"}
+            </Text>
+          </Pressable>
         </View>
       ) : null}
 
       {/* Content */}
-      {isOwner && view === "staff" ? (
-        renderStaffView()
-      ) : summaryLoading ? (
-        <View style={styles.centered} testID="loading-indicator">
-          <ActivityIndicator size="large" color="#2c7a7b" />
-          <Text style={styles.loadingText}>Loading...</Text>
-        </View>
-      ) : (
-        <FlatList
-          data={entries}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={
-            entries.length === 0 ? styles.emptyContainer : styles.listContent
-          }
-          refreshControl={
-            <RefreshControl
-              refreshing={summaryRefetching}
-              onRefresh={refetchSummary}
-              tintColor="#2c7a7b"
-            />
-          }
-          ListHeaderComponent={
-            <>
-              <View style={styles.summaryCard} testID="summary-card">
-                <Text style={styles.summaryPeriodLabel}>
-                  {summary?.periodLabel ?? ""}
-                </Text>
-                <Text style={styles.summaryHours}>
-                  {formatMinutes(summary?.totalWorkedMinutes ?? 0)}
-                </Text>
-                <Text style={styles.summaryHoursLabel}>worked</Text>
-                <View style={styles.summaryRow}>
-                  <View style={styles.summaryMetric}>
-                    <Text style={styles.summaryMetricValue}>
-                      {formatMinutes(summary?.totalTravelMinutes ?? 0)}
-                    </Text>
-                    <Text style={styles.summaryMetricLabel}>Travel</Text>
-                  </View>
-                  <View style={styles.summaryDivider} />
-                  <View style={styles.summaryMetric}>
-                    <Text style={styles.summaryMetricValue}>
-                      {summary?.entryCount ?? 0}
-                    </Text>
-                    <Text style={styles.summaryMetricLabel}>
-                      {summary?.entryCount === 1 ? "Entry" : "Entries"}
-                    </Text>
-                  </View>
-                </View>
-              </View>
-              <Pressable
-                style={({ pressed }) => [importStyles.importBanner, pressed && { opacity: 0.85 }]}
-                onPress={openImportModal}
-                testID="import-billing-button"
-              >
-                <View style={importStyles.importBannerLeft}>
-                  <Text style={importStyles.importBannerIcon}>📋</Text>
-                  <View>
-                    <Text style={importStyles.importBannerTitle}>Import from Billing Sheets</Text>
-                    <Text style={importStyles.importBannerSub}>Pull hours & driving time automatically</Text>
-                  </View>
-                </View>
-                <Text style={importStyles.importBannerArrow}>→</Text>
-              </Pressable>
-            </>
-          }
-          ListEmptyComponent={
-            <View style={styles.emptyState} testID="empty-state">
-              <Text style={styles.emptyIcon}>⏱</Text>
-              <Text style={styles.emptyTitle}>No entries yet</Text>
-              <Text style={styles.emptyText}>
-                Tap the + button to log your first shift.
-              </Text>
-            </View>
-          }
-          renderItem={({ item }) => {
-            const worked = computeWorkedMinutes(item.startTime, item.endTime);
-            return (
-              <Pressable
-                style={({ pressed }) => [styles.card, { opacity: pressed ? 0.85 : 1 }]}
-                onPress={() => openEdit(item)}
-                testID={`entry-item-${item.id}`}
-              >
-                <View style={styles.cardTop}>
-                  <Text style={styles.cardFacility}>{item.facilityName}</Text>
-                  <Text style={styles.cardWorked}>{formatMinutes(worked)}</Text>
-                </View>
-                <Text style={styles.cardDate}>{item.date}</Text>
-                <View style={styles.cardBottom}>
-                  <Text style={styles.cardTime}>
-                    {item.startTime} – {item.endTime}
-                  </Text>
-                  {item.travelMinutes > 0 ? (
-                    <View style={styles.travelBadge}>
-                      <Text style={styles.travelBadgeText}>
-                        {formatMinutes(item.travelMinutes)} travel
-                      </Text>
-                    </View>
-                  ) : null}
-                </View>
-                {item.notes ? (
-                  <Text style={styles.cardNotes} numberOfLines={1}>
-                    {item.notes}
-                  </Text>
-                ) : null}
-              </Pressable>
-            );
-          }}
-        />
-      )}
+      {isManager && view === "staff"
+        ? renderStaffView()
+        : isManager && view === "pending-requests"
+        ? renderPendingRequestsView()
+        : renderMyHoursView()}
 
-      {/* Floating add button — only in "mine" view */}
-      {view === "mine" ? (
+      {/* Floating add button — manager only, in "mine" view */}
+      {isManager && view === "mine" ? (
         <Pressable
           style={({ pressed }) => [styles.fab, { opacity: pressed ? 0.85 : 1 }]}
           onPress={() => {
@@ -602,7 +895,7 @@ export default function TimeTrackingScreen() {
         </Pressable>
       ) : null}
 
-      {/* Add Modal */}
+      {/* Add Modal (manager only) */}
       <Modal
         visible={addVisible}
         transparent
@@ -713,98 +1006,7 @@ export default function TimeTrackingScreen() {
         </KeyboardAvoidingView>
       </Modal>
 
-      {/* Import from Billing Modal */}
-      <Modal visible={showImportModal} transparent animationType="slide" onRequestClose={() => setShowImportModal(false)}>
-        <View style={importStyles.modalOverlay}>
-          <View style={importStyles.modalCard}>
-            <View style={importStyles.modalHeader}>
-              <Text style={importStyles.modalTitle}>Import from Billing Sheets</Text>
-              <Pressable onPress={() => setShowImportModal(false)} testID="close-import-modal">
-                <Text style={importStyles.modalClose}>✕</Text>
-              </Pressable>
-            </View>
-
-            {loadingImportable ? (
-              <View style={importStyles.centered}>
-                <ActivityIndicator size="large" color="#2c7a7b" />
-                <Text style={importStyles.loadingText}>Loading billing sheets...</Text>
-              </View>
-            ) : importableForms.length === 0 ? (
-              <View style={importStyles.centered}>
-                <Text style={importStyles.emptyIcon}>✓</Text>
-                <Text style={importStyles.emptyText}>All submitted billing sheets have been imported.</Text>
-              </View>
-            ) : (
-              <>
-                <Pressable
-                  style={importStyles.selectAllBtn}
-                  onPress={() => {
-                    if (selectedImportIds.size === importableForms.length) {
-                      setSelectedImportIds(new Set());
-                    } else {
-                      setSelectedImportIds(new Set(importableForms.map((f) => f.id)));
-                    }
-                  }}
-                >
-                  <Text style={importStyles.selectAllText}>
-                    {selectedImportIds.size === importableForms.length ? "Deselect All" : "Select All"}
-                  </Text>
-                </Pressable>
-
-                <ScrollView style={importStyles.formList} showsVerticalScrollIndicator={false}>
-                  {importableForms.map((form) => {
-                    const isSelected = selectedImportIds.has(form.id);
-                    const drivingMins = parseInt(form.drivingTime || "0", 10);
-                    return (
-                      <Pressable
-                        key={form.id}
-                        style={[importStyles.formRow, isSelected && importStyles.formRowSelected]}
-                        onPress={() => {
-                          const next = new Set(selectedImportIds);
-                          if (isSelected) next.delete(form.id);
-                          else next.add(form.id);
-                          setSelectedImportIds(next);
-                        }}
-                      >
-                        <View style={[importStyles.checkbox, isSelected && importStyles.checkboxSelected]}>
-                          {isSelected ? <Text style={importStyles.checkmark}>✓</Text> : null}
-                        </View>
-                        <View style={importStyles.formRowContent}>
-                          <Text style={importStyles.formPatient}>{form.patientName || "Unknown Patient"}</Text>
-                          <Text style={importStyles.formFacility}>{form.facility || "No facility"}</Text>
-                          <View style={importStyles.formMeta}>
-                            <Text style={importStyles.formMetaText}>{form.date}</Text>
-                            <Text style={importStyles.formMetaDot}>·</Text>
-                            <Text style={importStyles.formMetaText}>{form.startTime} – {form.endTime}</Text>
-                            {form.totalHours ? <><Text style={importStyles.formMetaDot}>·</Text><Text style={importStyles.formMetaText}>{form.totalHours}h</Text></> : null}
-                            {drivingMins > 0 ? <><Text style={importStyles.formMetaDot}>·</Text><Text style={importStyles.formMetaDriving}>🚗 {drivingMins}min</Text></> : null}
-                          </View>
-                        </View>
-                      </Pressable>
-                    );
-                  })}
-                </ScrollView>
-
-                <Pressable
-                  style={[importStyles.importBtn, selectedImportIds.size === 0 && importStyles.importBtnDisabled]}
-                  onPress={handleImport}
-                  disabled={importing || selectedImportIds.size === 0}
-                  testID="confirm-import-button"
-                >
-                  {importing
-                    ? <ActivityIndicator color="#fff" size="small" />
-                    : <Text style={importStyles.importBtnText}>
-                        Import {selectedImportIds.size > 0 ? `${selectedImportIds.size} ` : ""}
-                        {selectedImportIds.size === 1 ? "Entry" : "Entries"}
-                      </Text>}
-                </Pressable>
-              </>
-            )}
-          </View>
-        </View>
-      </Modal>
-
-      {/* Edit Modal */}
+      {/* Edit Modal (manager only) */}
       <Modal
         visible={editVisible}
         transparent
@@ -927,6 +1129,130 @@ export default function TimeTrackingScreen() {
           </View>
         </KeyboardAvoidingView>
       </Modal>
+
+      {/* Request Missed Hours Modal (technician only) */}
+      <Modal
+        visible={requestVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setRequestVisible(false)}
+      >
+        <KeyboardAvoidingView
+          style={styles.modalWrapper}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+        >
+          <Pressable style={styles.modalOverlay} onPress={() => setRequestVisible(false)} />
+          <View style={styles.modalCard} testID="request-modal">
+            <View style={styles.modalHandle} />
+            <Text style={styles.modalTitle}>Request Missed Hours</Text>
+            <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+              <Text style={styles.inputLabel}>Facility Name</Text>
+              <TextInput
+                style={styles.input}
+                value={requestForm.facilityName}
+                onChangeText={(v) => setRequestForm((f) => ({ ...f, facilityName: v }))}
+                placeholder="e.g. St. Mary's Hospital"
+                placeholderTextColor="#a0aec0"
+                testID="req-facility-name-input"
+              />
+
+              <Text style={styles.inputLabel}>Date (YYYY-MM-DD)</Text>
+              <TextInput
+                style={styles.input}
+                value={requestForm.date}
+                onChangeText={(v) => setRequestForm((f) => ({ ...f, date: v }))}
+                placeholder="2026-05-14"
+                placeholderTextColor="#a0aec0"
+                testID="req-date-input"
+              />
+
+              <View style={styles.row}>
+                <View style={styles.halfField}>
+                  <Text style={styles.inputLabel}>Start Time</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={requestForm.startTime}
+                    onChangeText={(v) => setRequestForm((f) => ({ ...f, startTime: v }))}
+                    placeholder="08:00"
+                    placeholderTextColor="#a0aec0"
+                    testID="req-start-time-input"
+                  />
+                </View>
+                <View style={styles.halfField}>
+                  <Text style={styles.inputLabel}>End Time</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={requestForm.endTime}
+                    onChangeText={(v) => setRequestForm((f) => ({ ...f, endTime: v }))}
+                    placeholder="16:00"
+                    placeholderTextColor="#a0aec0"
+                    testID="req-end-time-input"
+                  />
+                </View>
+              </View>
+
+              <Text style={styles.inputLabel}>Driving Time (minutes)</Text>
+              <TextInput
+                style={styles.input}
+                value={requestForm.travelMinutes}
+                onChangeText={(v) => setRequestForm((f) => ({ ...f, travelMinutes: v }))}
+                placeholder="0"
+                placeholderTextColor="#a0aec0"
+                keyboardType="numeric"
+                testID="req-travel-minutes-input"
+              />
+
+              <Text style={styles.inputLabel}>Reason (required)</Text>
+              <TextInput
+                style={[styles.input, styles.textArea]}
+                value={requestForm.reason}
+                onChangeText={(v) => setRequestForm((f) => ({ ...f, reason: v }))}
+                placeholder="Why are these hours missing?"
+                placeholderTextColor="#a0aec0"
+                multiline
+                numberOfLines={3}
+                textAlignVertical="top"
+                testID="req-reason-input"
+              />
+
+              <Text style={styles.inputLabel}>Notes (optional)</Text>
+              <TextInput
+                style={[styles.input, styles.textArea]}
+                value={requestForm.notes}
+                onChangeText={(v) => setRequestForm((f) => ({ ...f, notes: v }))}
+                placeholder="Any additional details..."
+                placeholderTextColor="#a0aec0"
+                multiline
+                numberOfLines={3}
+                textAlignVertical="top"
+                testID="req-notes-input"
+              />
+
+              <View style={styles.modalActions}>
+                <Pressable
+                  style={styles.cancelBtn}
+                  onPress={() => setRequestVisible(false)}
+                  testID="cancel-request-button"
+                >
+                  <Text style={styles.cancelBtnText}>Cancel</Text>
+                </Pressable>
+                <Pressable
+                  style={[styles.saveBtn, !isRequestValid && styles.saveBtnDisabled]}
+                  onPress={handleSubmitRequest}
+                  disabled={submitRequestMutation.isPending || !isRequestValid}
+                  testID="submit-request-button"
+                >
+                  {submitRequestMutation.isPending ? (
+                    <ActivityIndicator color="#fff" size="small" />
+                  ) : (
+                    <Text style={styles.saveBtnText}>Submit</Text>
+                  )}
+                </Pressable>
+              </View>
+            </ScrollView>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -981,7 +1307,7 @@ const styles = StyleSheet.create({
   },
   viewToggleBtn: { flex: 1, paddingVertical: 11, alignItems: "center" },
   viewToggleBtnActive: { borderBottomWidth: 2, borderBottomColor: "#2c7a7b" },
-  viewToggleText: { fontSize: 14, fontWeight: "600", color: "#a0aec0" },
+  viewToggleText: { fontSize: 13, fontWeight: "600", color: "#a0aec0" },
   viewToggleTextActive: { color: "#2c7a7b" },
 
   centered: { flex: 1, justifyContent: "center", alignItems: "center" },
@@ -1246,54 +1572,137 @@ const styles = StyleSheet.create({
   deleteBtnText: { fontSize: 15, fontWeight: "700", color: "#e53e3e" },
 });
 
-const importStyles = StyleSheet.create({
-  importBanner: {
-    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
-    backgroundColor: "#e6fffa", borderRadius: 14, padding: 14, marginHorizontal: 16,
-    marginBottom: 12, borderWidth: 1, borderColor: "#81e6d9",
+const requestStyles = StyleSheet.create({
+  // Technician banner to trigger request
+  requestBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "#fefce8",
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: "#fde68a",
   },
-  importBannerLeft: { flexDirection: "row", alignItems: "center", gap: 12 },
-  importBannerIcon: { fontSize: 22 },
-  importBannerTitle: { fontSize: 14, fontWeight: "700", color: "#2c7a7b" },
-  importBannerSub: { fontSize: 12, color: "#4a5568", marginTop: 1 },
-  importBannerArrow: { fontSize: 16, color: "#2c7a7b", fontWeight: "700" },
-  modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" },
-  modalCard: {
-    backgroundColor: "#fff", borderTopLeftRadius: 24, borderTopRightRadius: 24,
-    padding: 20, maxHeight: "85%",
+  requestBannerLeft: { flexDirection: "row", alignItems: "center", gap: 12 },
+  requestBannerIcon: { fontSize: 22 },
+  requestBannerTitle: { fontSize: 14, fontWeight: "700", color: "#92400e" },
+  requestBannerSub: { fontSize: 12, color: "#78350f", marginTop: 1 },
+  requestBannerArrow: { fontSize: 16, color: "#92400e", fontWeight: "700" },
+
+  // Section title
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: "800",
+    color: "#1a365d",
+    marginBottom: 12,
   },
-  modalHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 },
-  modalTitle: { fontSize: 18, fontWeight: "800", color: "#1a202c" },
-  modalClose: { fontSize: 18, color: "#718096", fontWeight: "600" },
-  centered: { alignItems: "center", paddingVertical: 32 },
-  loadingText: { marginTop: 12, color: "#4a5568", fontSize: 15 },
-  emptyIcon: { fontSize: 32, color: "#276749", marginBottom: 8 },
-  emptyText: { fontSize: 15, color: "#4a5568", textAlign: "center", lineHeight: 22 },
-  selectAllBtn: { alignSelf: "flex-end", marginBottom: 10 },
-  selectAllText: { fontSize: 13, color: "#2c7a7b", fontWeight: "600" },
-  formList: { maxHeight: 360 },
-  formRow: {
-    flexDirection: "row", alignItems: "flex-start", paddingVertical: 12,
-    borderBottomWidth: 1, borderBottomColor: "#f0f4f8", gap: 12,
+
+  // Request cards (both manager pending view and technician "my requests")
+  card: {
+    backgroundColor: "#fff",
+    borderRadius: 14,
+    padding: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  formRowSelected: { backgroundColor: "#e6fffa", borderRadius: 10, paddingHorizontal: 8, marginHorizontal: -8 },
-  checkbox: {
-    width: 22, height: 22, borderRadius: 6, borderWidth: 2, borderColor: "#cbd5e0",
-    justifyContent: "center", alignItems: "center", marginTop: 2, flexShrink: 0,
+  myRequestCard: {
+    backgroundColor: "#fff",
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 1,
   },
-  checkboxSelected: { backgroundColor: "#2c7a7b", borderColor: "#2c7a7b" },
-  checkmark: { color: "#fff", fontSize: 12, fontWeight: "700" },
-  formRowContent: { flex: 1 },
-  formPatient: { fontSize: 15, fontWeight: "700", color: "#1a202c", marginBottom: 2 },
-  formFacility: { fontSize: 13, color: "#4a5568", marginBottom: 4 },
-  formMeta: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 4 },
-  formMetaText: { fontSize: 12, color: "#718096" },
-  formMetaDot: { fontSize: 12, color: "#cbd5e0" },
-  formMetaDriving: { fontSize: 12, color: "#c05621", fontWeight: "600" },
-  importBtn: {
-    backgroundColor: "#2c7a7b", borderRadius: 12, padding: 16,
-    alignItems: "center", marginTop: 16,
+  cardHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 4,
   },
-  importBtnDisabled: { backgroundColor: "#a0aec0" },
-  importBtnText: { color: "#fff", fontSize: 16, fontWeight: "700" },
+  techName: { fontSize: 15, fontWeight: "700", color: "#1a365d" },
+  facility: { fontSize: 14, fontWeight: "600", color: "#2d3748", flex: 1, marginRight: 8 },
+
+  metaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    flexWrap: "wrap",
+    gap: 4,
+    marginTop: 4,
+    marginBottom: 6,
+  },
+  metaText: { fontSize: 13, color: "#718096" },
+  metaDot: { fontSize: 13, color: "#cbd5e0" },
+  metaTime: { fontSize: 13, fontWeight: "700", color: "#2c7a7b" },
+
+  reasonBox: {
+    backgroundColor: "#f8fafc",
+    borderRadius: 10,
+    padding: 10,
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  reasonLabel: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#a0aec0",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+    marginBottom: 3,
+  },
+  reasonText: { fontSize: 13, color: "#4a5568", lineHeight: 19 },
+
+  notes: { fontSize: 12, color: "#718096", fontStyle: "italic", marginTop: 4 },
+
+  // Status badges (pill-shaped)
+  badge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+  },
+  badgeText: { fontSize: 12, fontWeight: "700" },
+  badgePending: { backgroundColor: "#fef3c7" },
+  badgeTextPending: { color: "#92400e" },
+  badgeApproved: { backgroundColor: "#d1fae5" },
+  badgeTextApproved: { color: "#065f46" },
+  badgeDenied: { backgroundColor: "#fee2e2" },
+  badgeTextDenied: { color: "#991b1b" },
+
+  // Action buttons on manager pending cards
+  actions: {
+    flexDirection: "row",
+    gap: 10,
+    marginTop: 14,
+  },
+  denyBtn: {
+    flex: 1,
+    borderRadius: 10,
+    paddingVertical: 11,
+    alignItems: "center",
+    backgroundColor: "#fff5f5",
+    borderWidth: 1,
+    borderColor: "#fed7d7",
+  },
+  denyBtnText: { fontSize: 14, fontWeight: "700", color: "#e53e3e" },
+  approveBtn: {
+    flex: 1,
+    borderRadius: 10,
+    paddingVertical: 11,
+    alignItems: "center",
+    backgroundColor: "#2c7a7b",
+  },
+  approveBtnText: { fontSize: 14, fontWeight: "700", color: "#fff" },
+
+  emptyRequests: {
+    paddingVertical: 20,
+    alignItems: "center",
+  },
+  emptyRequestsText: { fontSize: 14, color: "#a0aec0" },
 });

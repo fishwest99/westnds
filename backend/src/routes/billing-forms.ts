@@ -71,6 +71,52 @@ billingFormsRouter.post("/:id/submit", async (c) => {
     where: { id },
     data: { status: "submitted" },
   });
+
+  // Auto-import as work entry if not already imported and time fields are present
+  const alreadyImported = await prisma.workEntry.findFirst({
+    where: { billingFormId: id },
+  });
+
+  if (
+    !alreadyImported &&
+    form.startTime.trim() !== "" &&
+    form.endTime.trim() !== ""
+  ) {
+    // Convert MM/DD/YYYY -> YYYY-MM-DD; fall back to today if invalid
+    function convertDate(d: string): string {
+      const m = d.trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+      if (!m) return null as unknown as string;
+      const [, month, day, year] = m as [string, string, string, string];
+      return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+    }
+
+    function todayIso(): string {
+      const now = new Date();
+      const y = now.getFullYear();
+      const mo = String(now.getMonth() + 1).padStart(2, "0");
+      const d = String(now.getDate()).padStart(2, "0");
+      return `${y}-${mo}-${d}`;
+    }
+
+    const isoDate = convertDate(form.date) ?? todayIso();
+    const drivingRaw = parseInt(form.drivingTime ?? "0", 10);
+    const travelMinutes = isNaN(drivingRaw) || drivingRaw < 0 ? 0 : drivingRaw;
+    const notes = `Auto-imported from billing form - ${form.patientName || ""}`.trim();
+
+    await prisma.workEntry.create({
+      data: {
+        userId: form.userId,
+        billingFormId: form.id,
+        facilityName: form.facility || "",
+        date: isoDate,
+        startTime: form.startTime,
+        endTime: form.endTime,
+        travelMinutes,
+        notes,
+      },
+    });
+  }
+
   return c.json({ data: form });
 });
 

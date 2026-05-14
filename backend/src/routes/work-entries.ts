@@ -344,6 +344,8 @@ workEntriesRouter.get("/", async (c) => {
 workEntriesRouter.post("/", async (c) => {
   const user = c.get("user");
   if (!user) return c.json({ error: { message: "Unauthorized" } }, 401);
+  const dbUser = await prisma.user.findUnique({ where: { id: user.id } });
+  if (!dbUser?.isManager) return c.json({ error: { message: "Managers only" } }, 403);
 
   const parsed = entryBodySchema.safeParse(await c.req.json());
   if (!parsed.success) {
@@ -370,6 +372,8 @@ workEntriesRouter.post("/", async (c) => {
 workEntriesRouter.put("/:id", async (c) => {
   const user = c.get("user");
   if (!user) return c.json({ error: { message: "Unauthorized" } }, 401);
+  const dbUser = await prisma.user.findUnique({ where: { id: user.id } });
+  if (!dbUser?.isManager) return c.json({ error: { message: "Managers only" } }, 403);
 
   const id = c.req.param("id");
 
@@ -403,6 +407,8 @@ workEntriesRouter.put("/:id", async (c) => {
 workEntriesRouter.delete("/:id", async (c) => {
   const user = c.get("user");
   if (!user) return c.json({ error: { message: "Unauthorized" } }, 401);
+  const dbUser = await prisma.user.findUnique({ where: { id: user.id } });
+  if (!dbUser?.isManager) return c.json({ error: { message: "Managers only" } }, 403);
 
   const id = c.req.param("id");
   const existing = await prisma.workEntry.findUnique({ where: { id } });
