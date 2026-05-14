@@ -176,6 +176,17 @@ export default function EditConsentFormScreen() {
 
   const handleSubmit = () => {
     if (!id) return;
+    const allChecked =
+      form.ackInformedConsent &&
+      form.ackAssignmentRights &&
+      form.ackAuthRelease &&
+      form.ackSurpriseBalance &&
+      form.ackFinancialResp;
+    if (!allChecked) {
+      setShowAckErrors(true);
+      setInlineError("Please check all acknowledgment boxes before submitting.");
+      return;
+    }
     setInlineError(null);
     setShowSubmitConfirm(true);
   };
