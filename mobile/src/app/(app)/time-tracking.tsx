@@ -17,6 +17,7 @@ import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api/api";
+import { useSession } from "@/lib/auth/use-session";
 
 type WorkEntry = {
   id: string;
@@ -35,6 +36,20 @@ type SummaryData = {
   totalTravelMinutes: number;
   entryCount: number;
   entries: WorkEntry[];
+};
+
+type StaffMemberSummary = {
+  userId: string;
+  userName: string;
+  totalWorkedMinutes: number;
+  totalTravelMinutes: number;
+  entryCount: number;
+  entries: WorkEntry[];
+};
+
+type StaffOverviewData = {
+  periodLabel: string;
+  staff: StaffMemberSummary[];
 };
 
 type Period = "day" | "week" | "month" | "year";
@@ -78,11 +93,22 @@ const EMPTY_FORM = {
   notes: "",
 };
 
+const OWNER_EMAIL = "west_nds@yahoo.com";
+
 export default function TimeTrackingScreen() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const [period, setPeriod] = useState<Period>("week");
   const today = getTodayString();
+
+  const { data: session } = useSession();
+  const isOwner = (session?.user?.email ?? "") === OWNER_EMAIL;
+
+  // View toggle state (owner only)
+  const [view, setView] = useState<"mine" | "staff">("mine");
+
+  // Expanded staff member state
+  const [expandedUserId, setExpandedUserId] = useState<string | null>(null);
 
   // Add modal state
   const [addVisible, setAddVisible] = useState(false);
@@ -93,7 +119,7 @@ export default function TimeTrackingScreen() {
   const [editEntry, setEditEntry] = useState<WorkEntry | null>(null);
   const [editForm, setEditForm] = useState({ ...EMPTY_FORM });
 
-  // Summary query
+  // Summary query (my hours)
   const {
     data: summary,
     isLoading: summaryLoading,
@@ -105,6 +131,21 @@ export default function TimeTrackingScreen() {
       api.get<SummaryData>(
         `/api/work-entries/summary?period=${period}&referenceDate=${today}`
       ),
+  });
+
+  // Staff overview query (owner only)
+  const {
+    data: staffOverview,
+    isLoading: staffLoading,
+    refetch: refetchStaff,
+    isRefetching: staffRefetching,
+  } = useQuery({
+    queryKey: ["work-entries-staff", period, today],
+    queryFn: () =>
+      api.get<StaffOverviewData>(
+        `/api/work-entries/staff-overview?period=${period}&referenceDate=${today}`
+      ),
+    enabled: isOwner && view === "staff",
   });
 
   const entries: WorkEntry[] = summary?.entries ?? [];
@@ -207,6 +248,131 @@ export default function TimeTrackingScreen() {
     editForm.startTime.trim().length > 0 &&
     editForm.endTime.trim().length > 0;
 
+  // Computed staff totals
+  const staffList: StaffMemberSummary[] = staffOverview?.staff ?? [];
+  const staffTotalWorked = staffList.reduce((sum, s) => sum + s.totalWorkedMinutes, 0);
+  const staffTotalTravel = staffList.reduce((sum, s) => sum + s.totalTravelMinutes, 0);
+  const staffTotalEntries = staffList.reduce((sum, s) => sum + s.entryCount, 0);
+
+  const renderStaffView = () => {
+    if (staffLoading) {
+      return (
+        <View style={styles.centered} testID="staff-loading-indicator">
+          <ActivityIndicator size="large" color="#2c7a7b" />
+          <Text style={styles.loadingText}>Loading staff hours...</Text>
+        </View>
+      );
+    }
+
+    return (
+      <FlatList
+        data={staffList}
+        keyExtractor={(item) => item.userId}
+        contentContainerStyle={
+          staffList.length === 0 ? styles.emptyContainer : styles.listContent
+        }
+        refreshControl={
+          <RefreshControl
+            refreshing={staffRefetching}
+            onRefresh={refetchStaff}
+            tintColor="#2c7a7b"
+          />
+        }
+        testID="staff-list"
+        ListHeaderComponent={
+          <View style={styles.summaryCard} testID="staff-summary-card">
+            <Text style={styles.summaryPeriodLabel}>
+              {staffOverview?.periodLabel ?? ""}
+            </Text>
+            <Text style={styles.summaryHours}>
+              {formatMinutes(staffTotalWorked)}
+            </Text>
+            <Text style={styles.summaryHoursLabel}>total worked (all staff)</Text>
+            <View style={styles.summaryRow}>
+              <View style={styles.summaryMetric}>
+                <Text style={styles.summaryMetricValue}>
+                  {formatMinutes(staffTotalTravel)}
+                </Text>
+                <Text style={styles.summaryMetricLabel}>Travel</Text>
+              </View>
+              <View style={styles.summaryDivider} />
+              <View style={styles.summaryMetric}>
+                <Text style={styles.summaryMetricValue}>
+                  {staffTotalEntries}
+                </Text>
+                <Text style={styles.summaryMetricLabel}>
+                  {staffTotalEntries === 1 ? "Entry" : "Entries"}
+                </Text>
+              </View>
+            </View>
+          </View>
+        }
+        ListEmptyComponent={
+          <View style={styles.emptyState} testID="staff-empty-state">
+            <Text style={styles.emptyIcon}>📋</Text>
+            <Text style={styles.emptyTitle}>No hours logged this period</Text>
+            <Text style={styles.emptyText}>
+              No staff have logged hours for this period.
+            </Text>
+          </View>
+        }
+        renderItem={({ item }) => {
+          const isExpanded = expandedUserId === item.userId;
+          return (
+            <View style={styles.staffCard} testID={`staff-card-${item.userId}`}>
+              <Pressable
+                onPress={() =>
+                  setExpandedUserId(isExpanded ? null : item.userId)
+                }
+                testID={`staff-card-toggle-${item.userId}`}
+              >
+                <View style={styles.staffCardTop}>
+                  <Text style={styles.staffName}>{item.userName}</Text>
+                  <Text style={styles.staffHours}>
+                    {formatMinutes(item.totalWorkedMinutes)}
+                  </Text>
+                </View>
+                <Text style={styles.staffMeta}>
+                  {item.entryCount} {item.entryCount === 1 ? "entry" : "entries"} · {formatMinutes(item.totalTravelMinutes)} travel
+                </Text>
+                <Text style={styles.staffChevron}>{isExpanded ? "▼" : "▶"}</Text>
+              </Pressable>
+
+              {isExpanded
+                ? item.entries.map((entry) => {
+                    const worked = computeWorkedMinutes(entry.startTime, entry.endTime);
+                    return (
+                      <View
+                        key={entry.id}
+                        style={styles.subEntry}
+                        testID={`sub-entry-${entry.id}`}
+                      >
+                        <View style={styles.subEntryTop}>
+                          <Text style={styles.subEntryFacility}>{entry.facilityName}</Text>
+                          <Text style={styles.subEntryHours}>{formatMinutes(worked)}</Text>
+                        </View>
+                        <Text style={styles.subEntryDate}>{entry.date}</Text>
+                        <Text style={styles.subEntryTime}>
+                          {entry.startTime} – {entry.endTime}
+                        </Text>
+                        {entry.travelMinutes > 0 ? (
+                          <View style={[styles.travelBadge, { marginTop: 6, alignSelf: "flex-start" }]}>
+                            <Text style={styles.travelBadgeText}>
+                              {formatMinutes(entry.travelMinutes)} travel
+                            </Text>
+                          </View>
+                        ) : null}
+                      </View>
+                    );
+                  })
+                : null}
+            </View>
+          );
+        }}
+      />
+    );
+  };
+
   return (
     <SafeAreaView style={styles.safe} edges={["top"]} testID="time-tracking-screen">
       {/* Header */}
@@ -236,7 +402,38 @@ export default function TimeTrackingScreen() {
         ))}
       </View>
 
-      {summaryLoading ? (
+      {/* View toggle (owner only) */}
+      {isOwner ? (
+        <View style={styles.viewToggle} testID="view-toggle">
+          <Pressable
+            style={[styles.viewToggleBtn, view === "mine" && styles.viewToggleBtnActive]}
+            onPress={() => setView("mine")}
+            testID="view-toggle-mine"
+          >
+            <Text
+              style={[styles.viewToggleText, view === "mine" && styles.viewToggleTextActive]}
+            >
+              My Hours
+            </Text>
+          </Pressable>
+          <Pressable
+            style={[styles.viewToggleBtn, view === "staff" && styles.viewToggleBtnActive]}
+            onPress={() => setView("staff")}
+            testID="view-toggle-staff"
+          >
+            <Text
+              style={[styles.viewToggleText, view === "staff" && styles.viewToggleTextActive]}
+            >
+              Staff Hours
+            </Text>
+          </Pressable>
+        </View>
+      ) : null}
+
+      {/* Content */}
+      {isOwner && view === "staff" ? (
+        renderStaffView()
+      ) : summaryLoading ? (
         <View style={styles.centered} testID="loading-indicator">
           <ActivityIndicator size="large" color="#2c7a7b" />
           <Text style={styles.loadingText}>Loading...</Text>
@@ -328,17 +525,19 @@ export default function TimeTrackingScreen() {
         />
       )}
 
-      {/* Floating add button */}
-      <Pressable
-        style={({ pressed }) => [styles.fab, { opacity: pressed ? 0.85 : 1 }]}
-        onPress={() => {
-          setForm({ ...EMPTY_FORM, date: getTodayString() });
-          setAddVisible(true);
-        }}
-        testID="add-entry-button"
-      >
-        <Text style={styles.fabText}>+</Text>
-      </Pressable>
+      {/* Floating add button — only in "mine" view */}
+      {view === "mine" ? (
+        <Pressable
+          style={({ pressed }) => [styles.fab, { opacity: pressed ? 0.85 : 1 }]}
+          onPress={() => {
+            setForm({ ...EMPTY_FORM, date: getTodayString() });
+            setAddVisible(true);
+          }}
+          testID="add-entry-button"
+        >
+          <Text style={styles.fabText}>+</Text>
+        </Pressable>
+      ) : null}
 
       {/* Add Modal */}
       <Modal
@@ -620,6 +819,17 @@ const styles = StyleSheet.create({
   },
   periodTabTextActive: { color: "#2c7a7b" },
 
+  viewToggle: {
+    flexDirection: "row",
+    backgroundColor: "#fff",
+    borderBottomWidth: 1,
+    borderBottomColor: "#e2e8f0",
+  },
+  viewToggleBtn: { flex: 1, paddingVertical: 11, alignItems: "center" },
+  viewToggleBtnActive: { borderBottomWidth: 2, borderBottomColor: "#2c7a7b" },
+  viewToggleText: { fontSize: 14, fontWeight: "600", color: "#a0aec0" },
+  viewToggleTextActive: { color: "#2c7a7b" },
+
   centered: { flex: 1, justifyContent: "center", alignItems: "center" },
   loadingText: { marginTop: 12, color: "#4a5568", fontSize: 15 },
 
@@ -749,6 +959,38 @@ const styles = StyleSheet.create({
     marginTop: 6,
     fontStyle: "italic",
   },
+
+  staffCard: {
+    backgroundColor: "#fff",
+    borderRadius: 14,
+    padding: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  staffCardTop: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 4,
+  },
+  staffName: { fontSize: 16, fontWeight: "700", color: "#1a365d" },
+  staffHours: { fontSize: 16, fontWeight: "800", color: "#2c7a7b" },
+  staffMeta: { fontSize: 13, color: "#718096" },
+  staffChevron: { fontSize: 14, color: "#a0aec0", marginTop: 6, textAlign: "right" },
+  subEntry: {
+    backgroundColor: "#f8fafc",
+    borderRadius: 10,
+    padding: 12,
+    marginTop: 8,
+  },
+  subEntryTop: { flexDirection: "row", justifyContent: "space-between" },
+  subEntryFacility: { fontSize: 14, fontWeight: "600", color: "#1a365d" },
+  subEntryHours: { fontSize: 14, fontWeight: "700", color: "#2c7a7b" },
+  subEntryDate: { fontSize: 12, color: "#a0aec0", marginTop: 2 },
+  subEntryTime: { fontSize: 12, color: "#4a5568", marginTop: 2 },
 
   fab: {
     position: "absolute",

@@ -99,6 +99,80 @@ function buildPeriodRange(
   }
 }
 
+const OWNER_EMAIL = "west_nds@yahoo.com";
+
+// GET /api/work-entries/staff-overview — owner only, must be registered before /summary and /:id
+workEntriesRouter.get("/staff-overview", async (c) => {
+  const user = c.get("user");
+  if (!user) return c.json({ error: { message: "Unauthorized" } }, 401);
+  if (user.email !== OWNER_EMAIL) {
+    return c.json({ error: { message: "Forbidden" } }, 403);
+  }
+
+  const period = (c.req.query("period") ?? "week") as "day" | "week" | "month" | "year";
+  const referenceDate = c.req.query("referenceDate") ?? toDateString(new Date());
+
+  if (!["day", "week", "month", "year"].includes(period)) {
+    return c.json({ error: { message: "period must be day, week, month, or year" } }, 400);
+  }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(referenceDate)) {
+    return c.json({ error: { message: "referenceDate must be YYYY-MM-DD" } }, 400);
+  }
+
+  const { startDate, endDate, periodLabel } = buildPeriodRange(period, referenceDate);
+
+  const allEntries = await prisma.workEntry.findMany({
+    where: { date: { gte: startDate, lte: endDate } },
+    include: { user: { select: { name: true } } },
+    orderBy: [{ date: "asc" }, { startTime: "asc" }],
+  });
+
+  // Group by userId
+  const grouped = new Map<
+    string,
+    {
+      userId: string;
+      userName: string;
+      totalWorkedMinutes: number;
+      totalTravelMinutes: number;
+      entries: Omit<(typeof allEntries)[number], "user">[];
+    }
+  >();
+
+  for (const entry of allEntries) {
+    const { user: entryUser, ...entryWithoutUser } = entry;
+    const userName = entryUser?.name ?? "Unknown";
+
+    if (!grouped.has(entry.userId)) {
+      grouped.set(entry.userId, {
+        userId: entry.userId,
+        userName,
+        totalWorkedMinutes: 0,
+        totalTravelMinutes: 0,
+        entries: [],
+      });
+    }
+
+    const group = grouped.get(entry.userId)!;
+    const worked = timeToMinutes(entry.endTime) - timeToMinutes(entry.startTime);
+    group.totalWorkedMinutes += worked > 0 ? worked : 0;
+    group.totalTravelMinutes += entry.travelMinutes;
+    group.entries.push(entryWithoutUser);
+  }
+
+  const staff = Array.from(grouped.values()).sort((a, b) =>
+    a.userName.localeCompare(b.userName)
+  );
+
+  // Add entryCount derived from entries length
+  const staffWithCount = staff.map((s) => ({
+    ...s,
+    entryCount: s.entries.length,
+  }));
+
+  return c.json({ data: { periodLabel, staff: staffWithCount } });
+});
+
 // GET /api/work-entries/summary — must be registered before /:id
 workEntriesRouter.get("/summary", async (c) => {
   const user = c.get("user");
