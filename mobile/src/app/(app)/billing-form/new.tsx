@@ -603,32 +603,10 @@ export default function NewBillingFormScreen() {
                 />
               </View>
             </View>
-            <View style={styles.row}>
-              <View style={[styles.field, { flex: 1, marginRight: 8 }]}>
-                <Text style={styles.fieldLabel}>Electrodes Used (Needle Count)</Text>
-                <TextInput
-                  style={styles.input}
-                  value={form.electrodesUsed}
-                  onChangeText={(v) => update("electrodesUsed", v)}
-                  placeholder="Count"
-                  keyboardType="numeric"
-                />
-              </View>
-            </View>
             <ModalityRow label="Thyroid Kit / Facial Kit" cptCode="" value={form.thyroidKit} onChange={(v) => update("thyroidKit", v)} />
             <ModalityRow label="SSEP / EMG" cptCode="" value={form.ssepEMG} onChange={(v) => update("ssepEMG", v)} />
             <ModalityRow label="Fluobeam" cptCode="" value={form.fluobeam} onChange={(v) => update("fluobeam", v)} />
             <View style={styles.row}>
-              <View style={[styles.field, { flex: 1, marginRight: 8 }]}>
-                <Text style={styles.fieldLabel}>Needle Count</Text>
-                <TextInput
-                  style={styles.input}
-                  value={form.needleCount}
-                  onChangeText={(v) => update("needleCount", v)}
-                  placeholder="Count"
-                  keyboardType="numeric"
-                />
-              </View>
               <View style={[styles.field, { flex: 1, marginRight: 8 }]}>
                 <Text style={styles.fieldLabel}>Needles Used</Text>
                 <TextInput
