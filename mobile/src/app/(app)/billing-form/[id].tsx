@@ -115,6 +115,19 @@ function ModalityRow({ label, cptCode, value, onChange }: {
   );
 }
 
+function calcHours(start: string, end: string): string | null {
+  const parse = (t: string) => {
+    const m = t.trim().match(/^(\d{1,2}):(\d{2})$/);
+    return m ? parseInt(m[1]) * 60 + parseInt(m[2]) : null;
+  };
+  const s = parse(start);
+  const e = parse(end);
+  if (s === null || e === null) return null;
+  let diff = e - s;
+  if (diff < 0) diff += 24 * 60;
+  return (diff / 60).toFixed(2);
+}
+
 export default function EditBillingFormScreen() {
   const { width } = useWindowDimensions();
   const isTablet = width >= 768;
@@ -166,6 +179,12 @@ export default function EditBillingFormScreen() {
 
   const update = (key: keyof BillingFormData, value: string | boolean) => {
     const updated = { ...form, [key]: value };
+    if (key === "startTime" || key === "endTime") {
+      const start = key === "startTime" ? value as string : form.startTime;
+      const end = key === "endTime" ? value as string : form.endTime;
+      const computed = calcHours(start, end);
+      if (computed !== null) updated.totalHours = computed;
+    }
     setForm(updated);
     saveForm(updated);
   };
