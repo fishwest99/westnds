@@ -17,10 +17,11 @@ type PatientCase = {
   billingForms: FormSummary[];
   consentForms: FormSummary[];
   caseStudyForms: FormSummary[];
+  medicalLienForms: FormSummary[];
 };
 
 type FormCard = {
-  key: keyof Pick<PatientCase, "consentForms" | "billingForms" | "caseStudyForms">;
+  key: keyof Pick<PatientCase, "consentForms" | "billingForms" | "caseStudyForms" | "medicalLienForms">;
   label: string;
   icon: string;
   accent: string;
@@ -59,6 +60,16 @@ const FORM_CARDS: FormCard[] = [
     bg: "#faf5ff",
     createEndpoint: "/api/case-study-forms",
     viewPath: "/case-study-form",
+    extraData: {},
+  },
+  {
+    key: "medicalLienForms",
+    label: "Medical Lien Agreement",
+    icon: "⚖️",
+    accent: "#c05621",
+    bg: "#fff5eb",
+    createEndpoint: "/api/medical-lien-forms",
+    viewPath: "/medical-lien-form",
     extraData: {},
   },
 ];

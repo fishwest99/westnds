@@ -6,6 +6,7 @@ import { auth } from "./auth";
 import { prisma } from "./prisma";
 import { billingFormsRouter } from "./routes/billing-forms";
 import { caseStudyFormsRouter } from "./routes/case-study-forms";
+import { medicalLienFormsRouter } from "./routes/medical-lien-forms";
 import { calendarEventsRouter } from "./routes/calendar-events";
 import { consentFormRouter } from "./routes/consent-forms";
 import { onCallRouter } from "./routes/on-call";
@@ -74,6 +75,7 @@ app.route("/api/role-requests", roleRequestsRouter);
 app.route("/api/time-off", timeOffRouter);
 app.route("/api/work-entries", workEntriesRouter);
 app.route("/api/cases", patientCasesRouter);
+app.route("/api/medical-lien-forms", medicalLienFormsRouter);
 
 const port = Number(process.env.PORT) || 3000;
 
