@@ -92,7 +92,7 @@ const EMG_MUSCLES = [
   "Trapezius", "Deltoids", "Biceps", "Triceps", "Abductor Pollicis",
   "Vast. Medialis", "EHL", "Anterior Tibialis", "Medial Gastrocs",
   "Upper MEPs", "Lower MEPs",
-  "ABR Right", "ABR Left", "ABR Hearing Loss",
+  "ABR Right", "ABR Left",
   "VER Right", "VER Left",
 ];
 

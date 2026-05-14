@@ -196,7 +196,6 @@ export async function generateCaseStudyFormPdf(form: Record<string, unknown>): P
           { text: "ABR:  " },
           { text: `${chk(selectedEMGMuscles, "ABR Right")} Right   ` },
           { text: `${chk(selectedEMGMuscles, "ABR Left")} Left   ` },
-          { text: `${chk(selectedEMGMuscles, "ABR Hearing Loss")} Hearing Loss   ` },
         ],
         marginBottom: 2,
       } as Content,
