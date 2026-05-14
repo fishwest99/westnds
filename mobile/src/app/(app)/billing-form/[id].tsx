@@ -530,15 +530,10 @@ export default function EditBillingFormScreen() {
               label="Motor Evoked Potentials" cptCode=""
               value={form.flatFeeMEP} onChange={(v) => update("flatFeeMEP", v)}
             />
-            <View style={styles.field}>
-              <Text style={styles.fieldLabel}>Baseline</Text>
-              <TextInput
-                style={styles.input}
-                value={form.baseline}
-                onChangeText={(v) => update("baseline", v)}
-                placeholder="Baseline notes"
-              />
-            </View>
+            <ModalityRow
+              label="Baseline" cptCode=""
+              value={form.baseline} onChange={(v) => update("baseline", v)}
+            />
           </View>
 
           {/* Timing & Equipment */}
