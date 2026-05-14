@@ -132,6 +132,12 @@ export default function NewConsentFormScreen() {
     loadForm();
   }, []);
 
+  useEffect(() => {
+    if (showAckErrors && form.ackInformedConsent && form.ackAssignmentRights && form.ackAuthRelease && form.ackSurpriseBalance && form.ackFinancialResp) {
+      setShowAckErrors(false);
+    }
+  }, [showAckErrors, form.ackInformedConsent, form.ackAssignmentRights, form.ackAuthRelease, form.ackSurpriseBalance, form.ackFinancialResp]);
+
   const loadForm = async () => {
     setLoadError(null);
     try {
@@ -546,7 +552,7 @@ export default function NewConsentFormScreen() {
             <>
               {showAckErrors && !(form.ackInformedConsent && form.ackAssignmentRights && form.ackAuthRelease && form.ackSurpriseBalance && form.ackFinancialResp) ? (
                 <View style={styles.ackErrorBanner}>
-                  <Text style={styles.ackErrorText}>⚠ Please check all acknowledgment boxes in the legal section above before submitting.</Text>
+                  <Text style={styles.ackErrorText}>⚠ Please check the highlighted boxes above before submitting.</Text>
                 </View>
               ) : null}
               {inlineError ? (
