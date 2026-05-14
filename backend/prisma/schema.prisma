@@ -27,6 +27,7 @@ model User {
   caseStudyForms CaseStudyForm[]
   medicalLienForms MedicalLienForm[]
   cases         PatientCase[]
+  coverageRequests OnCallCoverageRequest[]
 }
 
 model Session {
@@ -154,6 +155,20 @@ model OnCallEntry {
   notes     String   @default("")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model OnCallCoverageRequest {
+  id            String   @id @default(cuid())
+  userId        String
+  requesterName String   @default("")
+  dates         String   @default("[]")
+  reason        String   @default("")
+  status        String   @default("pending")
+  managerNote   String   @default("")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model TimeOffRequest {
