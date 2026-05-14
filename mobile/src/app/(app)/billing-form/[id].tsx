@@ -189,6 +189,8 @@ export default function EditBillingFormScreen() {
 
   const update = (key: keyof BillingFormData, value: string | boolean) => {
     const updated = { ...form, [key]: value };
+    if (key === "genderMale" && value === true) updated.genderFemale = false;
+    if (key === "genderFemale" && value === true) updated.genderMale = false;
     if (key === "startTime" || key === "endTime") {
       const start = key === "startTime" ? value as string : form.startTime;
       const end = key === "endTime" ? value as string : form.endTime;
