@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView,
-  ActivityIndicator, Alert, Platform,
+  ActivityIndicator, Alert, Platform, useWindowDimensions,
 } from "react-native";
 import { File as FSFile, Paths } from "expo-file-system";
 import * as MailComposer from "expo-mail-composer";
@@ -99,6 +99,9 @@ function Checkbox({ label, value, onChange }: { label: string; value: boolean; o
 }
 
 export default function ConsentFormScreen() {
+  const { width } = useWindowDimensions();
+  const isTablet = width >= 768;
+  const checkCellWidth = isTablet ? "25%" : "50%";
   const [form, setForm] = useState<ConsentFormData>(defaultForm);
   const [formId, setFormId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -249,7 +252,8 @@ export default function ConsentFormScreen() {
   const isSubmitted = form.status === "submitted";
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView style={styles.container} contentContainerStyle={[styles.content, isTablet && styles.contentTablet]}>
+      <View style={[styles.inner, isTablet && styles.innerTablet]}>
       <View style={styles.formHeader}>
         <View style={styles.headerTop}>
           <Text style={styles.orgName}>West NDx</Text>
@@ -316,11 +320,11 @@ export default function ConsentFormScreen() {
             ["modalityTO4NMJ", "TO4 (NMJ)"], ["modalityEMG", "EMG"], ["modalityVEP", "VEP"],
             ["modalityNVC", "NVC"], ["modalitySSEP", "SSEP"], ["modalityTcMEP", "TcMEP"],
           ] as [keyof ConsentFormData, string][]).map(([key, label]) => (
-            <View key={key} style={styles.checkCell}>
+            <View key={key} style={[styles.checkCell, { width: checkCellWidth }]}>
               <Checkbox label={label} value={form[key] as boolean} onChange={(v) => update(key, v)} />
             </View>
           ))}
-          <View style={styles.checkCell}>
+          <View style={[styles.checkCell, { width: checkCellWidth }]}>
             <Checkbox
               label="Other"
               value={!!form.modalityOtherText}
@@ -349,7 +353,7 @@ export default function ConsentFormScreen() {
             ["tcmepImplants", "Implants"], ["tcmepSpinalCord", "Spinal Cord Stimulator"],
             ["tcmepDBS", "DBS"], ["tcmepCochlearImpl", "Cochlear Implant"],
           ] as [keyof ConsentFormData, string][]).map(([key, label]) => (
-            <View key={key} style={styles.checkCell}>
+            <View key={key} style={[styles.checkCell, { width: checkCellWidth }]}>
               <Checkbox label={label} value={form[key] as boolean} onChange={(v) => update(key, v)} />
             </View>
           ))}
@@ -376,7 +380,7 @@ export default function ConsentFormScreen() {
             ["symptomStroke", "Stroke"], ["symptomDizziness", "Dizziness"],
             ["symptomNumbness", "Numbness"], ["symptomTingling", "Tingling"],
           ] as [keyof ConsentFormData, string][]).map(([key, label]) => (
-            <View key={key} style={styles.checkCell}>
+            <View key={key} style={[styles.checkCell, { width: checkCellWidth }]}>
               <Checkbox label={label} value={form[key] as boolean} onChange={(v) => update(key, v)} />
             </View>
           ))}
@@ -487,6 +491,7 @@ export default function ConsentFormScreen() {
       )}
 
       <View style={{ height: 40 }} />
+      </View>
     </ScrollView>
   );
 }
@@ -494,6 +499,9 @@ export default function ConsentFormScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#f0f4f8" },
   content: { padding: 16 },
+  contentTablet: { alignItems: "center" },
+  inner: { width: "100%" },
+  innerTablet: { maxWidth: 800, width: "100%" },
   loadingContainer: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#f0f4f8" },
   loadingText: { marginTop: 12, color: "#4a5568", fontSize: 16 },
   formHeader: { backgroundColor: "#1a365d", borderRadius: 12, padding: 20, marginBottom: 16 },
