@@ -9,6 +9,7 @@ import * as Sharing from "expo-sharing";
 import { authClient } from "@/lib/auth/auth-client";
 import { useInvalidateSession } from "@/lib/auth/use-session";
 import { api } from "@/lib/api/api";
+import { SignaturePad } from "@/components/SignaturePad";
 
 type ConsentFormData = {
   id?: string;
@@ -63,6 +64,9 @@ type ConsentFormData = {
   patientGuardianName: string;
   patientSignature: string;
   patientSignatureDate: string;
+  technicianName: string;
+  technicianSignature: string;
+  technicianDate: string;
 };
 
 const defaultForm: ConsentFormData = {
@@ -80,6 +84,7 @@ const defaultForm: ConsentFormData = {
   symptomCognitive: false, symptomMemory: false, symptomSpeech: false, symptomNaseau: false,
   symptomStroke: false, symptomDizziness: false, symptomNumbness: false, symptomTingling: false,
   otherMedicalHistory: "", patientGuardianName: "", patientSignature: "", patientSignatureDate: "",
+  technicianName: "", technicianSignature: "", technicianDate: "",
 };
 
 function Checkbox({ label, value, onChange }: { label: string; value: boolean; onChange: (v: boolean) => void }) {
@@ -412,19 +417,37 @@ export default function ConsentFormScreen() {
 
       {/* Signature */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Signature</Text>
+        <Text style={styles.sectionTitle}>Signatures</Text>
         <Text style={styles.signatureNote}>* The authorization of this Consent expires on the anniversary date of the Date of Service listed above. Member may revoke authorization at any time once account is current.</Text>
+
+        <Text style={styles.sigGroupLabel}>Patient / Legal Guardian</Text>
         <View style={styles.field}>
-          <Text style={styles.fieldLabel}>Patient or Legal Guardian Name (Print) *</Text>
+          <Text style={styles.fieldLabel}>Printed Full Name *</Text>
           <TextInput style={styles.input} value={form.patientGuardianName} onChangeText={(v) => update("patientGuardianName", v)} placeholder="Print full name" />
         </View>
         <View style={styles.field}>
-          <Text style={styles.fieldLabel}>Patient or Legal Guardian Signature *</Text>
-          <TextInput style={[styles.input, styles.signatureInput]} value={form.patientSignature} onChangeText={(v) => update("patientSignature", v)} placeholder="Type your full name as signature" />
+          <Text style={styles.fieldLabel}>Signature *</Text>
+          <SignaturePad value={form.patientSignature} onChange={(v) => update("patientSignature", v)} />
         </View>
         <View style={styles.field}>
           <Text style={styles.fieldLabel}>Date</Text>
           <TextInput style={styles.input} value={form.patientSignatureDate} onChangeText={(v) => update("patientSignatureDate", v)} placeholder="MM/DD/YYYY" />
+        </View>
+
+        <View style={styles.divider} />
+
+        <Text style={styles.sigGroupLabel}>Technician</Text>
+        <View style={styles.field}>
+          <Text style={styles.fieldLabel}>Printed Full Name</Text>
+          <TextInput style={styles.input} value={form.technicianName} onChangeText={(v) => update("technicianName", v)} placeholder="Technician full name" />
+        </View>
+        <View style={styles.field}>
+          <Text style={styles.fieldLabel}>Technician Signature</Text>
+          <SignaturePad value={form.technicianSignature} onChange={(v) => update("technicianSignature", v)} />
+        </View>
+        <View style={styles.field}>
+          <Text style={styles.fieldLabel}>Date</Text>
+          <TextInput style={styles.input} value={form.technicianDate} onChangeText={(v) => update("technicianDate", v)} placeholder="MM/DD/YYYY" />
         </View>
       </View>
 
@@ -504,6 +527,8 @@ const styles = StyleSheet.create({
   signatureNote: { fontSize: 12, color: "#718096", fontStyle: "italic", marginBottom: 12, lineHeight: 18 },
   submitButton: { backgroundColor: "#276749", borderRadius: 12, padding: 18, alignItems: "center", marginTop: 8, shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.15, shadowRadius: 4, elevation: 3 },
   submitText: { color: "#fff", fontSize: 17, fontWeight: "700" },
+  sigGroupLabel: { fontSize: 13, fontWeight: "700", color: "#2b6cb0", textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 10, marginTop: 4 },
+  divider: { borderTopWidth: 1, borderTopColor: "#e2e8f0", marginVertical: 16 },
   actionRow: { flexDirection: "row", gap: 12, marginTop: 8 },
   actionButton: { flex: 1, borderRadius: 12, padding: 16, alignItems: "center", justifyContent: "center", flexDirection: "row" },
   emailButton: { backgroundColor: "#276749", shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.15, shadowRadius: 4, elevation: 3 },

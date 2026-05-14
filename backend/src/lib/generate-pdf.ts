@@ -155,7 +155,9 @@ export async function generateConsentFormPdf(form: Record<string, unknown>): Pro
           body: [
             [
               { text: [{ text: "Patient or Legal Guardian Name (Print): ", bold: true }, (form.patientGuardianName as string) || ""] },
-              { text: [{ text: "Signature: ", bold: true }, { text: (form.patientSignature as string) || "", italics: true }] },
+              (form.patientSignature as string)?.startsWith("data:image")
+                ? { stack: [{ text: "Signature:", bold: true, marginBottom: 2 }, { image: form.patientSignature as string, width: 140, height: 50 }] }
+                : { text: [{ text: "Signature: ", bold: true }, "___________________"] },
               { text: [{ text: "Date: ", bold: true }, (form.patientSignatureDate as string) || ""] },
             ],
           ],
@@ -171,7 +173,9 @@ export async function generateConsentFormPdf(form: Record<string, unknown>): Pro
           body: [
             [
               { text: [{ text: "Technician Name (Print): ", bold: true }, (form.technicianName as string) || ""] },
-              { text: [{ text: "Technician Signature: ", bold: true }, { text: (form.technicianSignature as string) || "", italics: true }] },
+              (form.technicianSignature as string)?.startsWith("data:image")
+                ? { stack: [{ text: "Technician Signature:", bold: true, marginBottom: 2 }, { image: form.technicianSignature as string, width: 140, height: 50 }] }
+                : { text: [{ text: "Technician Signature: ", bold: true }, "___________________"] },
               { text: [{ text: "Date: ", bold: true }, (form.technicianDate as string) || ""] },
             ],
           ],
