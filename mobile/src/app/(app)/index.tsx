@@ -12,7 +12,30 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { authClient } from "@/lib/auth/auth-client";
 import { useInvalidateSession, useSession } from "@/lib/auth/use-session";
 import { api } from "@/lib/api/api";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+
+type OnCallEntry = { id: string; techName: string; date: string; notes: string };
+
+const toDateStr = (d: Date) => d.toISOString().split("T")[0];
+
+const getWeekRange = () => {
+  const today = new Date();
+  const dow = today.getDay();
+  const monday = new Date(today);
+  monday.setDate(today.getDate() - (dow === 0 ? 6 : dow - 1));
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  return { monday, sunday };
+};
+
+const formatShortDate = (dateStr: string) => {
+  const [year, month, day] = dateStr.split("-").map(Number);
+  return new Date(year, month - 1, day).toLocaleDateString("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  });
+};
 
 const TILES = [
   {
@@ -109,6 +132,21 @@ export default function HomeScreen() {
   const userName = session?.user?.name ?? "there";
   const firstName = userName.split(" ")[0];
 
+  const { data: onCallEntries } = useQuery({
+    queryKey: ["on-call"],
+    queryFn: () => api.get<OnCallEntry[]>("/api/on-call"),
+    staleTime: 1000 * 60 * 5,
+  });
+
+  const { monday, sunday } = getWeekRange();
+  const monStr = toDateStr(monday);
+  const sunStr = toDateStr(sunday);
+
+  const myOnCallDays = (onCallEntries ?? []).filter(
+    (e) => e.techName === userName && e.date >= monStr && e.date <= sunStr
+  );
+  const isOnCallThisWeek = myOnCallDays.length > 0;
+
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
       <StatusBar barStyle="light-content" backgroundColor="#1a365d" />
@@ -135,6 +173,28 @@ export default function HomeScreen() {
           <Text style={styles.welcomeName}>{firstName}</Text>
           <Text style={styles.welcomeSub}>What would you like to do today?</Text>
         </View>
+
+        {/* On-Call Banner */}
+        {isOnCallThisWeek ? (
+          <Pressable
+            style={({ pressed }) => [styles.onCallBanner, pressed && { opacity: 0.9 }]}
+            onPress={() => router.push("/on-call")}
+            testID="on-call-banner"
+          >
+            <View style={styles.onCallLeft}>
+              <View style={styles.onCallIconWrap}>
+                <Text style={styles.onCallIcon}>📞</Text>
+              </View>
+              <View>
+                <Text style={styles.onCallTitle}>You're On Call This Week</Text>
+                <Text style={styles.onCallDates}>
+                  {myOnCallDays.map((e) => formatShortDate(e.date)).join("  ·  ")}
+                </Text>
+              </View>
+            </View>
+            <Text style={styles.onCallArrow}>→</Text>
+          </Pressable>
+        ) : null}
 
         {/* Tiles */}
         <View style={styles.tilesGrid}>
@@ -276,5 +336,54 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 14,
     fontWeight: "700",
+  },
+
+  onCallBanner: {
+    marginHorizontal: 16,
+    marginBottom: 16,
+    backgroundColor: "#c05621",
+    borderRadius: 16,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    shadowColor: "#c05621",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  onCallLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+  },
+  onCallIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 12,
+  },
+  onCallIcon: { fontSize: 20 },
+  onCallTitle: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#fff",
+    marginBottom: 2,
+  },
+  onCallDates: {
+    fontSize: 12,
+    color: "rgba(255,255,255,0.85)",
+    fontWeight: "500",
+  },
+  onCallArrow: {
+    color: "#fff",
+    fontSize: 18,
+    fontWeight: "700",
+    marginLeft: 8,
   },
 });
