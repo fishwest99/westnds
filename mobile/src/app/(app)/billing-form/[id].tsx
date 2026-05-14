@@ -571,7 +571,7 @@ export default function EditBillingFormScreen() {
                   style={styles.input}
                   value={form.startTime}
                   onChangeText={(v) => update("startTime", formatMilitaryTime(v))}
-                  placeholder="14:30"
+                  placeholder="--:--"
                   keyboardType="numeric"
                   maxLength={5}
                 />
@@ -582,7 +582,7 @@ export default function EditBillingFormScreen() {
                   style={styles.input}
                   value={form.endTime}
                   onChangeText={(v) => update("endTime", formatMilitaryTime(v))}
-                  placeholder="16:00"
+                  placeholder="--:--"
                   keyboardType="numeric"
                   maxLength={5}
                 />
