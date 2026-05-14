@@ -1,15 +1,15 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView,
-  ActivityIndicator, Alert, useWindowDimensions, Pressable,
+  ActivityIndicator, Alert, useWindowDimensions, Pressable, Platform,
 } from "react-native";
 import { useRouter } from "expo-router";
-import { File as FSFile, Paths } from "expo-file-system";
 import * as MailComposer from "expo-mail-composer";
 import * as Sharing from "expo-sharing";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { authClient } from "@/lib/auth/auth-client";
 import { api } from "@/lib/api/api";
+import { downloadPdfToFile } from "@/lib/pdf/download-pdf";
 import { SignaturePad } from "@/components/SignaturePad";
 import { DatePickerInput } from "@/components/DatePickerInput";
 
@@ -246,22 +246,27 @@ export default function NewBillingFormScreen() {
 
   const downloadPdf = async (): Promise<string | null> => {
     if (!formId) return null;
-    const token = authClient.getCookie();
-    const destination = new FSFile(Paths.cache, `billing-form-${formId}.pdf`);
-    try {
-      const result = await FSFile.downloadFileAsync(
-        `${process.env.EXPO_PUBLIC_BACKEND_URL}/api/billing-forms/${formId}/pdf`,
-        destination,
-        { headers: { Cookie: token }, idempotent: true }
-      );
-      return result.uri;
-    } catch {
+    const uri = await downloadPdfToFile({
+      url: `${process.env.EXPO_PUBLIC_BACKEND_URL}/api/billing-forms/${formId}/pdf`,
+      filename: `billing-form-${formId}.pdf`,
+    });
+    if (!uri) {
       Alert.alert("Error", "Failed to download PDF");
       return null;
     }
+    return uri;
   };
 
   const handleEmailPdf = async () => {
+    if (Platform.OS === "web") {
+      setEmailLoading(true);
+      try {
+        await downloadPdf();
+      } finally {
+        setEmailLoading(false);
+      }
+      return;
+    }
     const isAvailable = await MailComposer.isAvailableAsync();
     if (!isAvailable) {
       Alert.alert("Not Available", "Email is not available on this device. Try 'Share PDF' instead.");
@@ -286,6 +291,7 @@ export default function NewBillingFormScreen() {
     try {
       const fileUri = await downloadPdf();
       if (!fileUri) return;
+      if (Platform.OS === "web") return;
       const canShare = await Sharing.isAvailableAsync();
       if (!canShare) {
         Alert.alert("Not Available", "Sharing is not available on this device.");
