@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import {
-  View, Text, TextInput, StyleSheet, Pressable, ActivityIndicator,
-  KeyboardAvoidingView, Platform, ScrollView,
+  View, Text, TextInput, StyleSheet, Pressable, ActivityIndicator, ScrollView,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -33,11 +32,25 @@ export default function NewCaseScreen() {
     }
   };
 
+  const CreateButton = () => (
+    <Pressable
+      style={({ pressed }) => [styles.createBtn, pressed && { opacity: 0.85 }, loading && { opacity: 0.7 }]}
+      onPress={handleCreate}
+      disabled={loading}
+      testID="create-case-button"
+    >
+      {loading
+        ? <ActivityIndicator color="#fff" />
+        : <Text style={styles.createBtnText}>Create Patient Case →</Text>}
+    </Pressable>
+  );
+
   return (
-    <SafeAreaView style={styles.safe} edges={["bottom"]} testID="new-case-screen">
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
+    <SafeAreaView style={styles.safe} edges={["top", "bottom"]} testID="new-case-screen">
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
       >
         {/* Header */}
         <View style={styles.header}>
@@ -48,60 +61,49 @@ export default function NewCaseScreen() {
           <Text style={styles.headerSub}>Enter patient information to begin</Text>
         </View>
 
-        {/* Scrollable form */}
-        <ScrollView
-          style={{ flex: 1 }}
-          contentContainerStyle={{ padding: 16, paddingBottom: 24 }}
-          keyboardShouldPersistTaps="handled"
-        >
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>Patient Information</Text>
+        {/* Card */}
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Patient Information</Text>
 
-            <Text style={styles.label}>Patient Name *</Text>
-            <TextInput
-              style={styles.input}
-              value={patientName}
-              onChangeText={setPatientName}
-              placeholder="Full patient name"
-              autoFocus
-              returnKeyType="done"
-              testID="patient-name-input"
-            />
+          <Text style={styles.label}>Patient Name *</Text>
+          <TextInput
+            style={styles.input}
+            value={patientName}
+            onChangeText={setPatientName}
+            placeholder="Full patient name"
+            returnKeyType="done"
+            testID="patient-name-input"
+          />
 
-            <Text style={styles.label}>Date of Service</Text>
-            <DatePickerInput
-              value={date}
-              onChange={setDate}
-              format="MM/DD/YYYY"
-              placeholder="Select date"
-              testID="date-input"
-            />
+          <Text style={styles.label}>Date of Service</Text>
+          <DatePickerInput
+            value={date}
+            onChange={setDate}
+            format="MM/DD/YYYY"
+            placeholder="Select date"
+            testID="date-input"
+          />
 
-            {error ? <Text style={styles.error}>{error}</Text> : null}
+          {error ? <Text style={styles.error}>{error}</Text> : null}
+
+          {/* Button at the top of actions — always visible */}
+          <View style={{ marginTop: 16 }}>
+            <CreateButton />
           </View>
-        </ScrollView>
-
-        {/* Fixed footer — always visible above keyboard */}
-        <View style={styles.footer}>
-          <Pressable
-            style={({ pressed }) => [styles.createBtn, pressed && { opacity: 0.85 }, loading && { opacity: 0.7 }]}
-            onPress={handleCreate}
-            disabled={loading}
-            testID="create-case-button"
-          >
-            {loading
-              ? <ActivityIndicator color="#fff" />
-              : <Text style={styles.createBtnText}>Create Patient Case →</Text>}
-          </Pressable>
         </View>
-      </KeyboardAvoidingView>
+
+        {/* Second button further down for easy thumb reach */}
+        <View style={styles.bottomBtnWrap}>
+          <CreateButton />
+        </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: "#1a365d" },
-  scroll: { flexGrow: 1 },
+  scroll: { flexGrow: 1, paddingBottom: 40 },
   header: {
     backgroundColor: "#1a365d",
     paddingHorizontal: 20,
@@ -133,16 +135,13 @@ const styles = StyleSheet.create({
     fontSize: 16, backgroundColor: "#f8fafc", color: "#1a202c", marginBottom: 16,
   },
   error: { color: "#e53e3e", fontSize: 13, marginBottom: 12 },
-  footer: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: "#fff",
-    borderTopWidth: 1,
-    borderTopColor: "#e2e8f0",
-  },
   createBtn: {
     backgroundColor: "#1a365d", borderRadius: 12, padding: 18,
-    alignItems: "center", marginTop: 8,
+    alignItems: "center",
   },
   createBtnText: { color: "#fff", fontSize: 17, fontWeight: "700" },
+  bottomBtnWrap: {
+    marginHorizontal: 16,
+    marginTop: 20,
+  },
 });
