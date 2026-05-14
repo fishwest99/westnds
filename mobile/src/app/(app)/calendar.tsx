@@ -15,6 +15,83 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api/api";
 
+// ─── Google Calendar iCal ─────────────────────────────────────────────────────
+
+const ICAL_URL = process.env.EXPO_PUBLIC_GOOGLE_CALENDAR_ICAL_URL ?? "";
+
+type GCalEvent = {
+  uid: string;
+  title: string;
+  date: string;       // YYYY-MM-DD (start date)
+  endDate: string;    // YYYY-MM-DD
+  startTime: string;  // HH:MM or "" if all-day
+  endTime: string;    // HH:MM or ""
+  location: string;
+  description: string;
+  allDay: boolean;
+};
+
+function unfoldIcal(raw: string): string {
+  return raw.replace(/\r\n[ \t]/g, "").replace(/\n[ \t]/g, "");
+}
+
+function parseIcalDate(val: string): { date: string; time: string; allDay: boolean } {
+  if (/^\d{8}$/.test(val)) {
+    const d = val;
+    return {
+      date: `${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6, 8)}`,
+      time: "",
+      allDay: true,
+    };
+  }
+  const m = val.match(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})/);
+  if (m) {
+    return {
+      date: `${m[1]}-${m[2]}-${m[3]}`,
+      time: `${m[4]}:${m[5]}`,
+      allDay: false,
+    };
+  }
+  return { date: "", time: "", allDay: true };
+}
+
+function parseIcalEvents(raw: string): GCalEvent[] {
+  const text = unfoldIcal(raw);
+  const events: GCalEvent[] = [];
+  const blocks = text.split("BEGIN:VEVENT");
+  for (let i = 1; i < blocks.length; i++) {
+    const block = blocks[i];
+    const get = (key: string): string => {
+      const re = new RegExp(`(?:^|\\n)${key}(?:;[^:]*)?:(.+?)(?:\\n|$)`, "i");
+      const m = block.match(re);
+      return m ? m[1].replace(/\\n/g, "\n").replace(/\\,/g, ",").trim() : "";
+    };
+    const dtStartRaw = get("DTSTART");
+    const dtEndRaw = get("DTEND");
+    if (!dtStartRaw) continue;
+    const start = parseIcalDate(dtStartRaw);
+    const end = dtEndRaw ? parseIcalDate(dtEndRaw) : start;
+    let endDate = end.date;
+    if (start.allDay && endDate && endDate !== start.date) {
+      const ed = new Date(endDate + "T00:00:00");
+      ed.setDate(ed.getDate() - 1);
+      endDate = ed.toISOString().split("T")[0];
+    }
+    events.push({
+      uid: get("UID"),
+      title: get("SUMMARY") || "(No title)",
+      date: start.date,
+      endDate: endDate || start.date,
+      startTime: start.time,
+      endTime: end.time,
+      location: get("LOCATION"),
+      description: get("DESCRIPTION"),
+      allDay: start.allDay,
+    });
+  }
+  return events;
+}
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type CalendarEvent = {
@@ -103,6 +180,26 @@ export default function CalendarScreen() {
 
   const events: CalendarEvent[] = data ?? [];
 
+  // ── Google Calendar query ──────────────────────────────────────────────────
+
+  const { data: gCalEvents = [] } = useQuery({
+    queryKey: ["gcal-events", year, month],
+    queryFn: async (): Promise<GCalEvent[]> => {
+      if (!ICAL_URL) return [];
+      const res = await fetch(ICAL_URL);
+      const text = await res.text();
+      return parseIcalEvents(text);
+    },
+    enabled: !!ICAL_URL,
+    staleTime: 1000 * 60 * 15, // cache 15 min
+  });
+
+  // Filter GCal events to current month
+  const gCalMonthEvents = useMemo(() => {
+    const monthStr = `${year}-${String(month).padStart(2, "0")}`;
+    return gCalEvents.filter((ev) => ev.date.startsWith(monthStr));
+  }, [gCalEvents, year, month]);
+
   // ── Mutations ──────────────────────────────────────────────────────────────
 
   const createMutation = useMutation({
@@ -189,6 +286,16 @@ export default function CalendarScreen() {
     return map;
   }, [events]);
 
+  // Map date string -> GCal events for quick lookup
+  const gCalByDate = useMemo(() => {
+    const map: Record<string, GCalEvent[]> = {};
+    for (const ev of gCalMonthEvents) {
+      if (!map[ev.date]) map[ev.date] = [];
+      map[ev.date].push(ev);
+    }
+    return map;
+  }, [gCalMonthEvents]);
+
   // ── Events list ────────────────────────────────────────────────────────────
 
   const displayedEvents = useMemo(() => {
@@ -210,6 +317,31 @@ export default function CalendarScreen() {
       });
   }, [selectedDate, eventsByDate, events, todayStr]);
 
+  // GCal events for the selected day
+  const displayedGCalEvents = useMemo(() => {
+    if (selectedDate) {
+      return (gCalByDate[selectedDate] ?? []).slice().sort((a, b) => {
+        if (a.startTime && b.startTime) return a.startTime.localeCompare(b.startTime);
+        return 0;
+      });
+    }
+    return [];
+  }, [selectedDate, gCalByDate]);
+
+  // Upcoming GCal events merged into main upcoming list (no day selected)
+  const upcomingGCalEvents = useMemo(() => {
+    if (selectedDate) return [];
+    return gCalEvents
+      .filter((ev) => ev.date >= todayStr)
+      .slice()
+      .sort((a, b) => {
+        const dateCmp = a.date.localeCompare(b.date);
+        if (dateCmp !== 0) return dateCmp;
+        if (a.startTime && b.startTime) return a.startTime.localeCompare(b.startTime);
+        return 0;
+      });
+  }, [selectedDate, gCalEvents, todayStr]);
+
   const sectionTitle = selectedDate
     ? (() => {
         const [y, mo, d] = selectedDate.split("-").map(Number);
@@ -217,9 +349,50 @@ export default function CalendarScreen() {
       })()
     : "Upcoming Events";
 
-  // ── Render ─────────────────────────────────────────────────────────────────
-
   const canSave = formTitle.trim().length > 0 && formDate.trim().length > 0;
+
+  // ── Render helpers ─────────────────────────────────────────────────────────
+
+  const renderGCalCard = (ev: GCalEvent, showGBadge: boolean) => {
+    const startFmt = formatTime(ev.startTime);
+    const endFmt = formatTime(ev.endTime);
+    let timeLabel: string | null = null;
+    if (startFmt && endFmt) {
+      timeLabel = `${startFmt} – ${endFmt}`;
+    } else if (startFmt) {
+      timeLabel = startFmt;
+    }
+
+    return (
+      <View key={ev.uid} style={styles.gcalCard} testID={`gcal-event-card-${ev.uid}`}>
+        <View style={styles.gcalCardTop}>
+          <Text style={styles.gcalTitle}>{ev.title}</Text>
+          {showGBadge ? (
+            <View style={styles.gBadge}>
+              <Text style={styles.gBadgeText}>G</Text>
+            </View>
+          ) : null}
+        </View>
+        <Text style={styles.gcalTime}>{timeLabel ?? "All day"}</Text>
+        {ev.location ? (
+          <Text style={styles.gcalLocation}>📍 {ev.location}</Text>
+        ) : null}
+        {ev.description ? (
+          <Text style={styles.gcalDesc} numberOfLines={2}>{ev.description}</Text>
+        ) : null}
+        <View style={styles.gcalFooter}>
+          {!selectedDate ? (
+            <Text style={styles.gcalTime}>{ev.date}</Text>
+          ) : (
+            <View />
+          )}
+          <Text style={styles.gcalBadge}>via Google Calendar</Text>
+        </View>
+      </View>
+    );
+  };
+
+  // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]} testID="calendar-screen">
@@ -281,7 +454,11 @@ export default function CalendarScreen() {
                 const isToday = dateStr === todayStr;
                 const isSelected = dateStr === selectedDate;
                 const dayEvents = eventsByDate[dateStr] ?? [];
-                const dotCount = Math.min(dayEvents.length, 2);
+                const dayGCalEvents = gCalByDate[dateStr] ?? [];
+
+                // Build dots: purple for in-app (up to 1), green for gcal (up to 1), max 2 total
+                const purpleDots = Math.min(dayEvents.length, 1);
+                const greenDots = Math.min(dayGCalEvents.length, 2 - purpleDots);
 
                 return (
                   <Pressable
@@ -310,8 +487,11 @@ export default function CalendarScreen() {
                       </Text>
                     </View>
                     <View style={styles.dotsRow}>
-                      {Array.from({ length: dotCount }).map((_, di) => (
-                        <View key={di} style={styles.dot} />
+                      {Array.from({ length: purpleDots }).map((_, di) => (
+                        <View key={`p-${di}`} style={styles.dot} />
+                      ))}
+                      {Array.from({ length: greenDots }).map((_, di) => (
+                        <View key={`g-${di}`} style={styles.gcalDot} />
                       ))}
                     </View>
                   </Pressable>
@@ -327,7 +507,8 @@ export default function CalendarScreen() {
             {sectionTitle}
           </Text>
 
-          {displayedEvents.length === 0 ? (
+          {/* In-app events */}
+          {displayedEvents.length === 0 && (!selectedDate || displayedGCalEvents.length === 0) ? (
             <View style={styles.emptyState} testID="empty-events">
               <Text style={styles.emptyIcon}>📅</Text>
               <Text style={styles.emptyText}>
@@ -382,6 +563,19 @@ export default function CalendarScreen() {
               );
             })
           )}
+
+          {/* Upcoming: merge GCal events (no day selected) */}
+          {!selectedDate && ICAL_URL && upcomingGCalEvents.length > 0 ? (
+            upcomingGCalEvents.map((ev) => renderGCalCard(ev, true))
+          ) : null}
+
+          {/* Selected day: Google Calendar sub-section */}
+          {selectedDate && ICAL_URL && displayedGCalEvents.length > 0 ? (
+            <View testID="gcal-section">
+              <Text style={styles.gcalSectionLabel}>Google Calendar</Text>
+              {displayedGCalEvents.map((ev) => renderGCalCard(ev, false))}
+            </View>
+          ) : null}
 
           {/* Bottom padding */}
           <View style={{ height: 32 }} />
@@ -716,6 +910,66 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: "#cbd5e0",
     marginTop: 4,
+  },
+
+  // Google Calendar Cards
+  gcalCard: {
+    backgroundColor: "#f0fff4",
+    borderRadius: 14,
+    padding: 16,
+    marginBottom: 10,
+    borderLeftWidth: 3,
+    borderLeftColor: "#38a169",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 1,
+  },
+  gcalCardTop: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginBottom: 4,
+  },
+  gcalTitle: { fontSize: 15, fontWeight: "700", color: "#1a365d", flex: 1, marginRight: 8 },
+  gcalTime: { fontSize: 13, color: "#4a5568" },
+  gcalLocation: { fontSize: 13, color: "#4a5568", marginTop: 2 },
+  gcalDesc: { fontSize: 12, color: "#718096", marginTop: 4 },
+  gcalFooter: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: 6,
+  },
+  gcalBadge: { fontSize: 11, color: "#718096", fontStyle: "italic" },
+  gcalSectionLabel: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#276749",
+    textTransform: "uppercase",
+    letterSpacing: 0.6,
+    marginTop: 12,
+    marginBottom: 6,
+  },
+  gcalDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: "#38a169",
+  },
+  gBadge: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: "#38a169",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  gBadgeText: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#fff",
   },
 
   // Modal
