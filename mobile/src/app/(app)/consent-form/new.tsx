@@ -98,13 +98,14 @@ const defaultForm: ConsentFormData = {
   technicianName: "", technicianSignature: "", technicianDate: "",
 };
 
-function Checkbox({ label, value, onChange }: { label: string; value: boolean; onChange: (v: boolean) => void }) {
+function Checkbox({ label, value, onChange, error }: { label: string; value: boolean; onChange: (v: boolean) => void; error?: boolean }) {
+  const hasError = error && !value;
   return (
     <TouchableOpacity style={styles.checkRow} onPress={() => onChange(!value)} activeOpacity={0.7}>
-      <View style={[styles.checkBox, value && styles.checkBoxChecked]}>
+      <View style={[styles.checkBox, value && styles.checkBoxChecked, hasError && styles.checkBoxError]}>
         {value ? <Text style={styles.checkMark}>✓</Text> : null}
       </View>
-      <Text style={styles.checkLabel}>{label}</Text>
+      <Text style={[styles.checkLabel, hasError && styles.checkLabelError]}>{label}</Text>
     </TouchableOpacity>
   );
 }
@@ -119,6 +120,7 @@ export default function NewConsentFormScreen() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [showAckErrors, setShowAckErrors] = useState(false);
   const [emailLoading, setEmailLoading] = useState(false);
   const [shareLoading, setShareLoading] = useState(false);
   const saveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -165,6 +167,12 @@ export default function NewConsentFormScreen() {
 
   const handleSubmit = async () => {
     if (!formId) return;
+    const allAcksChecked = form.ackInformedConsent && form.ackAssignmentRights && form.ackAuthRelease && form.ackSurpriseBalance && form.ackFinancialResp;
+    if (!allAcksChecked) {
+      setShowAckErrors(true);
+      Alert.alert("Acknowledgment Required", "Please check all acknowledgment boxes in the legal section before submitting.");
+      return;
+    }
     if (!form.patientGuardianName.trim() || !form.patientSignature.trim()) {
       Alert.alert("Required", "Please provide patient/guardian name and signature before submitting.");
       return;
@@ -436,19 +444,19 @@ export default function NewConsentFormScreen() {
           <View style={styles.section}>
             <Text style={styles.legalHeading}>Informed Consent</Text>
             <Text style={styles.legalText}>I hereby authorize West Neurodigmostics-Reading, LLC and West Neurodigmostics-Services, LLC - (West NDx), Out-Of-Network provider(s) to perform Intraoperative Neurophysiologic Monitoring as requested by my surgeon. Testing modalities may include, but are not limited to Transcranial Motor Evoked Potentials (TcMEP), Somatosensory Evoked Potentials (SSEP), Brainstem Auditory Evoked Potentials (BAEP), Electroencephalography (EEG) and Electromyography (EMG). I authorize West NDx to share the data obtained during the monitoring with a Physician, either, in person or via secure internet transmission, for the purpose of interpreting the data. I understand that I have the right to informed consent, to which my surgeon, authorized representative, or Technologist will explain the monitoring process and answer questions I may have in regard to the performed services.</Text>
-            <Checkbox label="I have read and acknowledge the above" value={form.ackInformedConsent} onChange={(v) => update("ackInformedConsent", v)} />
+            <Checkbox label="I have read and acknowledge the above" value={form.ackInformedConsent} onChange={(v) => update("ackInformedConsent", v)} error={showAckErrors} />
             <Text style={styles.legalHeading}>Assignment of Rights and Benefits</Text>
             <Text style={styles.legalText}>In consideration of the medical services to be provided, I understand that I am responsible for payment for these services in accordance with the rates and terms now in effect at West NDx to the extent that I am legally responsible. I hereby assign West NDx, Physician, or affiliated third-party company (together known as {'"'}West NDx and affiliates{'"'}), any and all benefits and all interest and rights (including the right to collect the unpaid insurance benefits, penalties, attorney{`'`}s fees, court costs and all recoverable damages of any nature from the medical insurance company that provided coverage on the date listed herein), for services rendered under any insurance policy or prepaid healthcare plan. This assignment includes the right to appeal with the payer and/or bring litigation to the insured{`'`}s medical insurance company in the insured{`'`}s name and assert all claims that the insured will have against the insurance company resulting from, or in any way pertaining to, the medical coverage that the insured is alleged to have had with his/her insurance company in regard to aforementioned medical procedures to be performed. The insured agrees to cooperate with West NDx and affiliates in providing documents and testimony concerning the rights assigned herein. I acknowledge that any {'"'}Patient Responsibility{'"'}, including but not limited to Co-Insurance, Out-Of-Pocket, Deductible, etc, that is not covered or paid by such policy, or plan not covered by Medicare or Workers{`'`} Compensation, is my legal responsibility. I authorize the release of information to the Social Security Administration or its intermediaries or carriers as well as any information needed for billing Medicare/Medicaid claims. I request that payment and authorized benefits be made on my behalf and I assign benefits payable for services rendered by West NDx and affiliates.</Text>
-            <Checkbox label="I have read and acknowledge the above" value={form.ackAssignmentRights} onChange={(v) => update("ackAssignmentRights", v)} />
+            <Checkbox label="I have read and acknowledge the above" value={form.ackAssignmentRights} onChange={(v) => update("ackAssignmentRights", v)} error={showAckErrors} />
             <Text style={styles.legalHeading}>Authorization to Release Information and Appointed Representative</Text>
             <Text style={styles.legalText}>I authorize West NDx and affiliates to have full and complete access to my hospital medical records. Furthermore, I authorize West NDx and affiliates to furnish requested information from my medical and other records to any insurance or third-party payer, or to any other persons or entities financially responsible for the patient{`'`}s care or treatment, including representatives of local, state or federal agencies in accordance with applicable law, for the purpose of obtaining payment on the account. I authorize West NDx to release information or copies of these records to any referring physician, neurologist, affiliated third-party company or healthcare facility as necessary. I authorize West NDx to act as my duly appointed representative in the resolution of any unpaid charges; including, acting on my behalf during any reconsideration/appeal; in that regard, I acknowledge I have the right to revoke my designation of West NDx as my appointed representative via written revocation to West NDx. I acknowledge West NDx{`'`}s authority to continue to act as my appointed representative will continue until West NDx receives my written revocation.</Text>
-            <Checkbox label="I have read and acknowledge the above" value={form.ackAuthRelease} onChange={(v) => update("ackAuthRelease", v)} />
+            <Checkbox label="I have read and acknowledge the above" value={form.ackAuthRelease} onChange={(v) => update("ackAuthRelease", v)} error={showAckErrors} />
             <Text style={styles.legalHeading}>Surprise/Balance Billing Disclosure</Text>
             <Text style={styles.legalText}>I have been made aware that West NDx are out-of-network providers prior to this procedure. I have also been made aware I have the right to request an in-network provider to perform all my covered medical services. If an in-network provider is not available, I may receive these services from an out-of-network provider. I understand if this is the case, the most I can be billed for covered services is my in-network cost-sharing amount, which are copayments, deductibles, and/or coinsurance. West NDx will not bill me for additional costs.</Text>
-            <Checkbox label="I have read and acknowledge the above" value={form.ackSurpriseBalance} onChange={(v) => update("ackSurpriseBalance", v)} />
+            <Checkbox label="I have read and acknowledge the above" value={form.ackSurpriseBalance} onChange={(v) => update("ackSurpriseBalance", v)} error={showAckErrors} />
             <Text style={styles.legalHeading}>Financial Responsibility</Text>
             <Text style={styles.legalText}>I hereby authorize West NDx to pursue payment for the IOM services performed on the procedure on this date. I give this authority from the actions they require as defined above.</Text>
-            <Checkbox label="I have read and acknowledge the above" value={form.ackFinancialResp} onChange={(v) => update("ackFinancialResp", v)} />
+            <Checkbox label="I have read and acknowledge the above" value={form.ackFinancialResp} onChange={(v) => update("ackFinancialResp", v)} error={showAckErrors} />
             <Text style={styles.legalText}>My signature below indicates that I consent to these procedures and have been made aware of my benefits and financial responsibility.</Text>
           </View>
 
@@ -513,9 +521,16 @@ export default function NewConsentFormScreen() {
               </TouchableOpacity>
             </View>
           ) : (
-            <TouchableOpacity style={styles.submitButton} onPress={handleSubmit} disabled={submitting} testID="submit-button">
-              {submitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitText}>Submit Consent Form</Text>}
-            </TouchableOpacity>
+            <>
+              {showAckErrors && !(form.ackInformedConsent && form.ackAssignmentRights && form.ackAuthRelease && form.ackSurpriseBalance && form.ackFinancialResp) ? (
+                <View style={styles.ackErrorBanner}>
+                  <Text style={styles.ackErrorText}>⚠ Please check all acknowledgment boxes in the legal section above before submitting.</Text>
+                </View>
+              ) : null}
+              <TouchableOpacity style={styles.submitButton} onPress={handleSubmit} disabled={submitting} testID="submit-button">
+                {submitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitText}>Submit Consent Form</Text>}
+              </TouchableOpacity>
+            </>
           )}
 
           <View style={{ height: 40 }} />
@@ -563,6 +578,10 @@ const styles = StyleSheet.create({
   checkCell: { width: "50%", marginBottom: 4 },
   checkRow: { flexDirection: "row", alignItems: "center", paddingVertical: 5 },
   checkBox: { width: 20, height: 20, borderWidth: 2, borderColor: "#cbd5e0", borderRadius: 4, justifyContent: "center", alignItems: "center", marginRight: 8, backgroundColor: "#fff" },
+  checkBoxError: { borderColor: "#e53e3e", backgroundColor: "#fff5f5" },
+  checkLabelError: { color: "#e53e3e" },
+  ackErrorBanner: { backgroundColor: "#fff5f5", borderWidth: 1, borderColor: "#e53e3e", borderRadius: 8, padding: 12, marginBottom: 10 },
+  ackErrorText: { color: "#c53030", fontSize: 13, fontWeight: "600", lineHeight: 18 },
   checkBoxChecked: { backgroundColor: "#2b6cb0", borderColor: "#2b6cb0" },
   checkMark: { color: "#fff", fontSize: 12, fontWeight: "700" },
   checkLabel: { fontSize: 13, color: "#2d3748", flex: 1 },
