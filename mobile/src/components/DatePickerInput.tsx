@@ -1,10 +1,11 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   View,
   Text,
   Pressable,
   Modal,
   StyleSheet,
+  ScrollView,
 } from "react-native";
 import { Calendar } from "react-native-calendars";
 
@@ -19,31 +20,31 @@ interface DatePickerInputProps {
   maxDate?: string;
 }
 
+type PickerMode = "calendar" | "year";
+
+const MONTH_NAMES = [
+  "January","February","March","April","May","June",
+  "July","August","September","October","November","December",
+];
+
 function getTodayISO(): string {
   const d = new Date();
-  const y = d.getFullYear();
-  const mo = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${mo}-${day}`;
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
 }
 
-// Convert from display format to YYYY-MM-DD for the Calendar
 function toISO(value: string, format: "MM/DD/YYYY" | "YYYY-MM-DD"): string {
   if (!value) return "";
   if (format === "YYYY-MM-DD") return value;
-  // MM/DD/YYYY -> YYYY-MM-DD
   const parts = value.split("/");
   if (parts.length !== 3) return "";
   const [mm, dd, yyyy] = parts;
   if (!mm || !dd || !yyyy || yyyy.length !== 4) return "";
-  return `${yyyy}-${mm.padStart(2, "0")}-${dd.padStart(2, "0")}`;
+  return `${yyyy}-${mm.padStart(2,"0")}-${dd.padStart(2,"0")}`;
 }
 
-// Convert from YYYY-MM-DD to display format
 function fromISO(iso: string, format: "MM/DD/YYYY" | "YYYY-MM-DD"): string {
   if (!iso) return "";
   if (format === "YYYY-MM-DD") return iso;
-  // YYYY-MM-DD -> MM/DD/YYYY
   const parts = iso.split("-");
   if (parts.length !== 3) return "";
   const [yyyy, mm, dd] = parts;
@@ -60,22 +61,68 @@ export function DatePickerInput({
   minDate = "1930-01-01",
   maxDate,
 }: DatePickerInputProps) {
-  const [modalVisible, setModalVisible] = useState(false);
   const today = getTodayISO();
   const resolvedMaxDate = maxDate ?? today;
+  const minYear = parseInt(minDate.slice(0, 4), 10);
+  const maxYear = parseInt(resolvedMaxDate.slice(0, 4), 10);
 
-  // The ISO date currently selected (for the calendar)
+  const [modalVisible, setModalVisible] = useState(false);
+  const [mode, setMode] = useState<PickerMode>("calendar");
+  const [calendarKey, setCalendarKey] = useState(0);
+
   const selectedISO = toISO(value, format);
+  const selectedYear = selectedISO ? parseInt(selectedISO.slice(0, 4), 10) : new Date().getFullYear();
+
+  const [displayedMonth, setDisplayedMonth] = useState<string>(() =>
+    selectedISO ? selectedISO.slice(0, 7) + "-01" : today.slice(0, 7) + "-01"
+  );
+
+  const yearScrollRef = useRef<ScrollView>(null);
+
+  const years: number[] = [];
+  for (let y = minYear; y <= maxYear; y++) years.push(y);
+
+  // Scroll to the relevant year when year picker opens
+  useEffect(() => {
+    if (mode === "year") {
+      const targetYear = selectedISO ? selectedYear : new Date().getFullYear();
+      const idx = years.indexOf(targetYear);
+      if (idx >= 0 && yearScrollRef.current) {
+        // 4 cols, each row ~52px tall
+        const row = Math.floor(idx / 4);
+        const offset = Math.max(0, (row - 3) * 52);
+        setTimeout(() => {
+          yearScrollRef.current?.scrollTo({ y: offset, animated: false });
+        }, 80);
+      }
+    }
+  }, [mode]);
+
+  const openModal = () => {
+    setMode("calendar");
+    const base = selectedISO || today;
+    setDisplayedMonth(base.slice(0, 7) + "-01");
+    setModalVisible(true);
+  };
+
+  const handleDayPress = (day: { dateString: string }) => {
+    onChange(fromISO(day.dateString, format));
+    setModalVisible(false);
+  };
+
+  const handleYearSelect = (year: number) => {
+    const monthPart = displayedMonth.slice(5, 7);
+    setDisplayedMonth(`${year}-${monthPart}-01`);
+    setCalendarKey(k => k + 1);
+    setMode("calendar");
+  };
+
+  const displayedYear = parseInt(displayedMonth.slice(0, 4), 10);
+  const displayedMonthIdx = parseInt(displayedMonth.slice(5, 7), 10) - 1;
 
   const markedDates = selectedISO
     ? { [selectedISO]: { selected: true, selectedColor: "#2c7a7b" } }
     : {};
-
-  const handleDayPress = (day: { dateString: string }) => {
-    const displayValue = fromISO(day.dateString, format);
-    setModalVisible(false);
-    onChange(displayValue);
-  };
 
   const displayText = value || null;
 
@@ -84,7 +131,7 @@ export function DatePickerInput({
       {label ? <Text style={styles.label}>{label}</Text> : null}
       <Pressable
         style={styles.inputBox}
-        onPress={() => setModalVisible(true)}
+        onPress={openModal}
         testID={testID ? `${testID}-trigger` : undefined}
       >
         <Text style={displayText ? styles.valueText : styles.placeholderText}>
@@ -101,6 +148,7 @@ export function DatePickerInput({
       >
         <View style={styles.overlay}>
           <View style={styles.card}>
+            {/* Modal header */}
             <View style={styles.cardHeader}>
               <Text style={styles.cardTitle}>Select Date</Text>
               <Pressable
@@ -112,23 +160,96 @@ export function DatePickerInput({
                 <Text style={styles.closeBtnText}>✕</Text>
               </Pressable>
             </View>
-            <Calendar
-              onDayPress={handleDayPress}
-              markedDates={markedDates}
-              minDate={minDate}
-              maxDate={resolvedMaxDate}
-              current={selectedISO || today}
-              theme={{
-                todayTextColor: "#2c7a7b",
-                arrowColor: "#2c7a7b",
-                selectedDayBackgroundColor: "#2c7a7b",
-                selectedDayTextColor: "#fff",
-                dotColor: "#2c7a7b",
-                textDayFontSize: 15,
-                textMonthFontSize: 15,
-                textDayHeaderFontSize: 13,
-              }}
-            />
+
+            {mode === "year" ? (
+              /* ── Year picker ── */
+              <View style={styles.yearPickerContainer}>
+                <View style={styles.yearPickerHeader}>
+                  <Text style={styles.yearPickerTitle}>Select Year</Text>
+                  <Pressable onPress={() => setMode("calendar")} style={styles.backBtn}>
+                    <Text style={styles.backBtnText}>← Back</Text>
+                  </Pressable>
+                </View>
+                <ScrollView
+                  ref={yearScrollRef}
+                  style={styles.yearScroll}
+                  showsVerticalScrollIndicator={false}
+                >
+                  <View style={styles.yearGrid}>
+                    {years.map((year) => {
+                      const isSelected = year === selectedYear && !!selectedISO;
+                      const isCurrent = year === new Date().getFullYear();
+                      return (
+                        <Pressable
+                          key={year}
+                          style={[
+                            styles.yearCell,
+                            isSelected && styles.yearCellSelected,
+                            !isSelected && isCurrent && styles.yearCellCurrent,
+                          ]}
+                          onPress={() => handleYearSelect(year)}
+                          testID={`year-${year}`}
+                        >
+                          <Text
+                            style={[
+                              styles.yearCellText,
+                              isSelected && styles.yearCellTextSelected,
+                              !isSelected && isCurrent && styles.yearCellTextCurrent,
+                            ]}
+                          >
+                            {year}
+                          </Text>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                </ScrollView>
+              </View>
+            ) : (
+              /* ── Calendar view ── */
+              <View>
+                {/* Tappable month/year strip */}
+                <Pressable
+                  style={styles.monthYearStrip}
+                  onPress={() => setMode("year")}
+                  testID="month-year-strip"
+                >
+                  <Text style={styles.monthYearText}>
+                    {MONTH_NAMES[displayedMonthIdx]} {displayedYear}
+                  </Text>
+                  <View style={styles.changeYearBadge}>
+                    <Text style={styles.changeYearText}>Change Year ▼</Text>
+                  </View>
+                </Pressable>
+
+                <Calendar
+                  key={calendarKey}
+                  onDayPress={handleDayPress}
+                  markedDates={markedDates}
+                  minDate={minDate}
+                  maxDate={resolvedMaxDate}
+                  current={displayedMonth}
+                  onMonthChange={(month: { year: number; month: number }) => {
+                    setDisplayedMonth(
+                      `${month.year}-${String(month.month).padStart(2, "0")}-01`
+                    );
+                  }}
+                  hideExtraDays={false}
+                  theme={{
+                    todayTextColor: "#2c7a7b",
+                    arrowColor: "#2c7a7b",
+                    selectedDayBackgroundColor: "#2c7a7b",
+                    selectedDayTextColor: "#fff",
+                    textDayFontSize: 15,
+                    textMonthFontSize: 1,   // hide built-in month text (we show our own above)
+                    textMonthFontWeight: "400",
+                    textDayHeaderFontSize: 13,
+                    calendarBackground: "#fff",
+                    monthTextColor: "transparent",
+                  }}
+                />
+              </View>
+            )}
           </View>
         </View>
       </Modal>
@@ -150,7 +271,6 @@ const styles = StyleSheet.create({
     borderColor: "#e2e8f0",
     borderRadius: 8,
     padding: 12,
-    fontSize: 15,
     backgroundColor: "#f8fafc",
     flexDirection: "row",
     alignItems: "center",
@@ -195,7 +315,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingVertical: 14,
     borderBottomWidth: 1,
     borderBottomColor: "#e2e8f0",
   },
@@ -215,6 +335,97 @@ const styles = StyleSheet.create({
   closeBtnText: {
     fontSize: 14,
     color: "#4a5568",
+    fontWeight: "600",
+  },
+  // Month/year strip (tappable, sits above calendar)
+  monthYearStrip: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    backgroundColor: "#f0faf9",
+    borderBottomWidth: 1,
+    borderBottomColor: "#e2e8f0",
+  },
+  monthYearText: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#1a202c",
+  },
+  changeYearBadge: {
+    backgroundColor: "#2c7a7b",
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  changeYearText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#fff",
+  },
+  // Year picker
+  yearPickerContainer: {
+    maxHeight: 340,
+  },
+  yearPickerHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#e2e8f0",
+    backgroundColor: "#f0faf9",
+  },
+  yearPickerTitle: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#1a202c",
+  },
+  backBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: "#e2e8f0",
+  },
+  backBtnText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#2c7a7b",
+  },
+  yearScroll: {
+    maxHeight: 280,
+  },
+  yearGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    padding: 8,
+  },
+  yearCell: {
+    width: "25%",
+    paddingVertical: 12,
+    alignItems: "center",
+    borderRadius: 8,
+    marginVertical: 2,
+  },
+  yearCellSelected: {
+    backgroundColor: "#2c7a7b",
+  },
+  yearCellCurrent: {
+    backgroundColor: "#e6f4f4",
+  },
+  yearCellText: {
+    fontSize: 15,
+    color: "#2d3748",
+    fontWeight: "400",
+  },
+  yearCellTextSelected: {
+    color: "#fff",
+    fontWeight: "700",
+  },
+  yearCellTextCurrent: {
+    color: "#2c7a7b",
     fontWeight: "600",
   },
 });
