@@ -570,39 +570,10 @@ export default function EditBillingFormScreen() {
                   keyboardType="numeric"
                 />
               </View>
-              <View style={[styles.field, { flex: 1 }]}>
-                <Text style={styles.fieldLabel}>Thyroid Kit / Facial Kit</Text>
-                <TextInput
-                  style={styles.input}
-                  value={form.thyroidKit}
-                  onChangeText={(v) => update("thyroidKit", v)}
-                  placeholder="Count"
-                  keyboardType="numeric"
-                />
-              </View>
             </View>
-            <View style={styles.row}>
-              <View style={[styles.field, { flex: 1, marginRight: 8 }]}>
-                <Text style={styles.fieldLabel}>SSEP / EMG</Text>
-                <TextInput
-                  style={styles.input}
-                  value={form.ssepEMG}
-                  onChangeText={(v) => update("ssepEMG", v)}
-                  placeholder="Count"
-                  keyboardType="numeric"
-                />
-              </View>
-              <View style={[styles.field, { flex: 1 }]}>
-                <Text style={styles.fieldLabel}>Fluobeam</Text>
-                <TextInput
-                  style={styles.input}
-                  value={form.fluobeam}
-                  onChangeText={(v) => update("fluobeam", v)}
-                  placeholder="Count"
-                  keyboardType="numeric"
-                />
-              </View>
-            </View>
+            <ModalityRow label="Thyroid Kit / Facial Kit" cptCode="" value={form.thyroidKit} onChange={(v) => update("thyroidKit", v)} />
+            <ModalityRow label="SSEP / EMG" cptCode="" value={form.ssepEMG} onChange={(v) => update("ssepEMG", v)} />
+            <ModalityRow label="Fluobeam" cptCode="" value={form.fluobeam} onChange={(v) => update("fluobeam", v)} />
             <View style={styles.row}>
               <View style={[styles.field, { flex: 1, marginRight: 8 }]}>
                 <Text style={styles.fieldLabel}>Needle Count</Text>
