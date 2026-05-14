@@ -4,6 +4,7 @@ import { cors } from "hono/cors";
 import { logger } from "hono/logger";
 import { auth } from "./auth";
 import { prisma } from "./prisma";
+import { billingFormsRouter } from "./routes/billing-forms";
 import { calendarEventsRouter } from "./routes/calendar-events";
 import { consentFormRouter } from "./routes/consent-forms";
 import { onCallRouter } from "./routes/on-call";
@@ -62,6 +63,7 @@ app.use("*", async (c, next) => {
 
 app.get("/health", (c) => c.json({ status: "ok" }));
 app.on(["GET", "POST"], "/api/auth/*", (c) => auth.handler(c.req.raw));
+app.route("/api/billing-forms", billingFormsRouter);
 app.route("/api/calendar-events", calendarEventsRouter);
 app.route("/api/consent-forms", consentFormRouter);
 app.route("/api/on-call", onCallRouter);

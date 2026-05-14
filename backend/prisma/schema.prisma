@@ -19,6 +19,7 @@ model User {
   sessions      Session[]
   accounts      Account[]
   consentForms  ConsentForm[]
+  billingForms  BillingForm[]
   timeOffRequests TimeOffRequest[]
   workEntries   WorkEntry[]
   roleRequests  RoleRequest[]
@@ -204,4 +205,74 @@ model CalendarEvent {
   description   String   @default("")
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+}
+
+model BillingForm {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status    String   @default("draft")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Header
+  invoiceNumber   String @default("")
+  poNumber        String @default("")
+  patientName     String @default("")
+  age             String @default("")
+  genderMale      Boolean @default(false)
+  genderFemale    Boolean @default(false)
+  referringDoctor String @default("")
+  roomNumber      String @default("")
+  patientNumber   String @default("")
+  techName        String @default("")
+  facility        String @default("")
+  date            String @default("")
+  procedure       String @default("")
+
+  // Evoked Potentials CPT quantities
+  cptVisual           String @default("")
+  cptAuditory         String @default("")
+  cptUpperExtremities String @default("")
+  cptLowerExtremities String @default("")
+  cptUpperMotorEP     String @default("")
+  cptLowerMotorEP     String @default("")
+  cptRLNMonitoring    String @default("")
+
+  // EMG/Nerve Conduction CPT quantities
+  cptTwoExtEMG          String @default("")
+  cptFourExtEMG         String @default("")
+  cptCranialUnilateral  String @default("")
+  cptCranialBilateral   String @default("")
+  cptElectrocorticography String @default("")
+  cptStatFee            String @default("")
+  cptStandby            String @default("")
+
+  // EEG/Monitoring
+  cptEEG      String @default("")
+  flatFeeMEP  String @default("")
+  baseline    String @default("")
+
+  // Timing & Equipment
+  startTime      String @default("")
+  endTime        String @default("")
+  electrodesUsed String @default("")
+  thyroidKit     String @default("")
+  ssepEMG        String @default("")
+  fluobeam       String @default("")
+  needleCount    String @default("")
+  needlesUsed    String @default("")
+  needlesRemoved String @default("")
+
+  // Summary
+  totalHours   String @default("")
+  computerUsed String @default("")
+  cancellation String @default("")
+  neurologist  String @default("")
+
+  // Signatures
+  technicianSignature     String @default("")
+  technicianSignatureDate String @default("")
+  rnSignature             String @default("")
+  rnSignatureDate         String @default("")
 }

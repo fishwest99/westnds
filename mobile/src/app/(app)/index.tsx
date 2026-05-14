@@ -45,7 +45,7 @@ const TILES = [
     label: "Start New Case",
     icon: "＋",
     description: "Begin a new consent form",
-    href: "/consent-form/new" as const,
+    href: "/new-case" as const,
     accent: "#2b6cb0",
     bg: "#ebf4ff",
   },
