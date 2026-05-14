@@ -288,14 +288,7 @@ export default function EditConsentFormScreen() {
           {/* Company */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Company(ies) Providing IOM Services</Text>
-            <View style={styles.row}>
-              <View style={styles.halfCell}>
-                <Checkbox label="West NDx - Reading" value={form.companyReading} onChange={(v) => update("companyReading", v)} />
-              </View>
-              <View style={styles.halfCell}>
-                <Checkbox label="West NDx Services" value={form.companyServices} onChange={(v) => update("companyServices", v)} />
-              </View>
-            </View>
+            <Checkbox label="West NDS/NDR" value={form.companyReading} onChange={(v) => update("companyReading", v)} />
           </View>
 
           {/* Patient Information */}
