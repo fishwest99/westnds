@@ -6,6 +6,7 @@ import {
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { api } from "@/lib/api/api";
+import { DatePickerInput } from "@/components/DatePickerInput";
 
 export default function NewCaseScreen() {
   const router = useRouter();
@@ -34,7 +35,7 @@ export default function NewCaseScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]} testID="new-case-screen">
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : "height"} keyboardVerticalOffset={0}>
         <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
           {/* Header */}
           <View style={styles.header}>
@@ -61,12 +62,11 @@ export default function NewCaseScreen() {
             />
 
             <Text style={styles.label}>Date of Service</Text>
-            <TextInput
-              style={styles.input}
+            <DatePickerInput
               value={date}
-              onChangeText={setDate}
-              placeholder="MM/DD/YYYY"
-              keyboardType="numbers-and-punctuation"
+              onChange={setDate}
+              format="MM/DD/YYYY"
+              placeholder="Select date"
               testID="date-input"
             />
 
@@ -84,7 +84,7 @@ export default function NewCaseScreen() {
             </Pressable>
           </View>
 
-          <View style={{ height: 40 }} />
+          <View style={{ height: 80 }} />
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
