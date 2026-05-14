@@ -201,6 +201,28 @@ export default function PatientCaseScreen() {
           })}
         </View>
 
+        {/* Other Documents */}
+        <View style={styles.cards}>
+          <Pressable
+            style={({ pressed }) => [styles.card, { backgroundColor: "#edf2f7", opacity: pressed ? 0.85 : 1 }]}
+            onPress={() => router.push("/hp-scan" as never)}
+            testID="form-card-otherDocuments"
+          >
+            <View style={styles.cardRow}>
+              <View style={[styles.iconWrap, { backgroundColor: "#2d374822" }]}>
+                <Text style={styles.cardIcon}>📷</Text>
+              </View>
+              <View style={styles.cardMeta}>
+                <Text style={[styles.cardLabel, { color: "#2d3748" }]}>Other Documents</Text>
+                <Text style={{ fontSize: 12, color: "#718096" }}>Scan & upload documents</Text>
+              </View>
+              <View style={[styles.arrowBtn, { backgroundColor: "#2d3748" }]}>
+                <Text style={styles.arrowText}>→</Text>
+              </View>
+            </View>
+          </Pressable>
+        </View>
+
         {/* Close Out Case */}
         {data.status !== "closed" && (
           <View style={styles.closeSection}>

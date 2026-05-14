@@ -70,7 +70,7 @@ export default function HpScanScreen() {
 
   const sharePdf = async () => {
     if (!pdfUri) return;
-    await Sharing.shareAsync(pdfUri, { mimeType: "application/pdf", dialogTitle: "Share H&P Document", UTI: "com.adobe.pdf" });
+    await Sharing.shareAsync(pdfUri, { mimeType: "application/pdf", dialogTitle: "Share Other Documents Document", UTI: "com.adobe.pdf" });
   };
 
   const emailPdf = async () => {
@@ -78,8 +78,8 @@ export default function HpScanScreen() {
     const available = await MailComposer.isAvailableAsync();
     if (!available) { await sharePdf(); return; }
     await MailComposer.composeAsync({
-      subject: `H&P Document – ${new Date().toLocaleDateString()}`,
-      body: "Please find the H&P document attached.",
+      subject: `Other Documents Document – ${new Date().toLocaleDateString()}`,
+      body: "Please find the Other Documents document attached.",
       attachments: [pdfUri],
     });
   };
@@ -92,7 +92,7 @@ export default function HpScanScreen() {
           <Pressable onPress={() => router.back()} style={styles.backBtn} testID="back-button">
             <Text style={styles.backText}>← Back</Text>
           </Pressable>
-          <Text style={styles.headerTitle}>H&P Scan</Text>
+          <Text style={styles.headerTitle}>Other Documents Scan</Text>
           <View style={{ width: 60 }} />
         </View>
         <View style={styles.permissionContainer}>
@@ -118,7 +118,7 @@ export default function HpScanScreen() {
               <Pressable onPress={() => router.back()} testID="back-button">
                 <Text style={styles.cameraBackText}>← Back</Text>
               </Pressable>
-              <Text style={styles.cameraTitleText}>H&P Scan</Text>
+              <Text style={styles.cameraTitleText}>Other Documents Scan</Text>
               {photos.length > 0 ? (
                 <View style={styles.pageCountBadge}>
                   <Text style={styles.pageCountText}>{photos.length} pg</Text>
@@ -202,7 +202,7 @@ export default function HpScanScreen() {
             <Pressable onPress={() => { setPhotos([]); setPdfUri(null); setPhase("camera"); }} style={styles.backBtn} testID="scan-again-button">
               <Text style={styles.backText}>← New Scan</Text>
             </Pressable>
-            <Text style={styles.headerTitle}>H&P Document</Text>
+            <Text style={styles.headerTitle}>Other Documents Document</Text>
             <View style={{ width: 60 }} />
           </View>
           <View style={styles.doneContent}>
@@ -210,7 +210,7 @@ export default function HpScanScreen() {
               <Text style={styles.doneIcon}>✅</Text>
             </View>
             <Text style={styles.doneTitle}>PDF Ready</Text>
-            <Text style={styles.doneSub}>{photos.length} page{photos.length !== 1 ? "s" : ""} · H&P Document</Text>
+            <Text style={styles.doneSub}>{photos.length} page{photos.length !== 1 ? "s" : ""} · Other Documents Document</Text>
             <View style={styles.doneActions}>
               <Pressable style={styles.shareBtn} onPress={sharePdf} testID="share-pdf-button">
                 <Text style={styles.shareBtnText}>Share PDF</Text>

@@ -51,7 +51,7 @@ const TILES = [
   },
   {
     id: "hp-scan",
-    label: "H&P",
+    label: "Other Documents",
     icon: "📷",
     description: "Scan & upload documents",
     href: "/hp-scan" as const,
