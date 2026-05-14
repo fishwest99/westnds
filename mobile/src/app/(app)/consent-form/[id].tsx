@@ -174,10 +174,6 @@ export default function EditConsentFormScreen() {
 
   const handleSubmit = () => {
     if (!id) return;
-    if (!form.patientGuardianName.trim() || !form.patientSignature.trim()) {
-      setInlineError("Please provide patient/guardian name and signature before submitting.");
-      return;
-    }
     setInlineError(null);
     setShowSubmitConfirm(true);
   };
