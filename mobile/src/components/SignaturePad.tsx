@@ -1,5 +1,5 @@
 import React, { useRef, useState } from "react";
-import { View, PanResponder, StyleSheet, TouchableOpacity, Text, Image } from "react-native";
+import { View, PanResponder, StyleSheet, TouchableOpacity, Text, Image, Platform } from "react-native";
 import { Svg, Path } from "react-native-svg";
 import { captureRef } from "react-native-view-shot";
 
@@ -18,12 +18,30 @@ export function SignaturePad({ value, onChange, height = 140 }: Props) {
   const pathsRef = useRef<string[]>([]);
 
   const capture = async () => {
-    if (!padRef.current || pathsRef.current.length === 0) return;
-    try {
-      const base64 = await captureRef(padRef, { format: "png", result: "base64" });
-      onChange("data:image/png;base64," + base64);
-    } catch (e) {
-      console.error("Signature capture failed:", e);
+    if (pathsRef.current.length === 0) return;
+
+    if (Platform.OS === "web") {
+      // Web: serialize SVG paths to a data URL (avoids findNodeHandle)
+      const allPaths = pathsRef.current;
+      const pathEls = allPaths
+        .map((p) => `<path d="${p}" stroke="#1a365d" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`)
+        .join("");
+      const svgContent = `<svg xmlns="http://www.w3.org/2000/svg" height="${height}" width="400">${pathEls}</svg>`;
+      try {
+        const encoded = btoa(unescape(encodeURIComponent(svgContent)));
+        onChange(`data:image/svg+xml;base64,${encoded}`);
+      } catch (e) {
+        console.error("Signature capture failed:", e);
+      }
+    } else {
+      // Native: use captureRef for a PNG snapshot
+      if (!padRef.current) return;
+      try {
+        const base64 = await captureRef(padRef, { format: "png", result: "base64" });
+        onChange("data:image/png;base64," + base64);
+      } catch (e) {
+        console.error("Signature capture failed:", e);
+      }
     }
   };
 
