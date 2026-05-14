@@ -339,7 +339,7 @@ export default function NewBillingFormScreen() {
             <Text style={styles.orgName}>West NDx</Text>
             <Text style={styles.formTitle}>Billing Sheet</Text>
             <Text style={styles.formSubtitle}>Intraoperative Neuromonitoring Services</Text>
-            {saving ? <Text style={styles.savingText}>Saving...</Text> : null}
+            <Text style={[styles.savingText, { opacity: saving ? 1 : 0 }]}>Saving...</Text>
             {isSubmitted ? (
               <View style={styles.submittedBadge}>
                 <Text style={styles.submittedText}>✓ Submitted</Text>
