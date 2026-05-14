@@ -29,6 +29,15 @@ const FORM_OPTIONS = [
     bg: "#e6ffef",
     href: "/billing-form/new" as const,
   },
+  {
+    id: "case-study-checklist",
+    label: "Case Study Checklist",
+    icon: "🧠",
+    description: "History of Electrodes and Muscles — intraoperative monitoring",
+    accent: "#6b21a8",
+    bg: "#faf5ff",
+    href: "/case-study-form/new" as const,
+  },
 ] as const;
 
 export default function NewCaseScreen() {

@@ -24,6 +24,7 @@ model User {
   workEntries   WorkEntry[]
   roleRequests  RoleRequest[]
   calendarEvents  CalendarEvent[]
+  caseStudyForms CaseStudyForm[]
 }
 
 model Session {
@@ -276,4 +277,27 @@ model BillingForm {
   technicianSignatureDate String @default("")
   rnSignature             String @default("")
   rnSignatureDate         String @default("")
+}
+
+model CaseStudyForm {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status    String   @default("draft")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  patientName          String @default("")
+  date                 String @default("")
+  technicianName       String @default("")
+  craniotomyDiagnosis  String @default("")
+  selectedProcedures   String @default("[]")
+  electrodePickupSites String @default("[]")
+  electrodeOther       String @default("")
+  selectedEPNerves     String @default("[]")
+  selectedEMGMuscles   String @default("[]")
+  problemsOrSignalLoss String @default("")
+  diabetic             Boolean @default(false)
+  patientHistory       String @default("")
+  technicianSignature  String @default("")
 }
