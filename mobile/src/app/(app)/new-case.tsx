@@ -34,19 +34,26 @@ export default function NewCaseScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safe} edges={["top"]} testID="new-case-screen">
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : "height"} keyboardVerticalOffset={0}>
-        <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
-          {/* Header */}
-          <View style={styles.header}>
-            <Pressable onPress={() => router.back()} style={styles.backBtn} testID="back-button">
-              <Text style={styles.backText}>← Home</Text>
-            </Pressable>
-            <Text style={styles.headerTitle}>Start New Case</Text>
-            <Text style={styles.headerSub}>Enter patient information to begin</Text>
-          </View>
+    <SafeAreaView style={styles.safe} edges={["bottom"]} testID="new-case-screen">
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+      >
+        {/* Header */}
+        <View style={styles.header}>
+          <Pressable onPress={() => router.back()} style={styles.backBtn} testID="back-button">
+            <Text style={styles.backText}>← Home</Text>
+          </Pressable>
+          <Text style={styles.headerTitle}>Start New Case</Text>
+          <Text style={styles.headerSub}>Enter patient information to begin</Text>
+        </View>
 
-          {/* Card */}
+        {/* Scrollable form */}
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={{ padding: 16, paddingBottom: 24 }}
+          keyboardShouldPersistTaps="handled"
+        >
           <View style={styles.card}>
             <Text style={styles.cardTitle}>Patient Information</Text>
 
@@ -57,7 +64,7 @@ export default function NewCaseScreen() {
               onChangeText={setPatientName}
               placeholder="Full patient name"
               autoFocus
-              returnKeyType="next"
+              returnKeyType="done"
               testID="patient-name-input"
             />
 
@@ -71,21 +78,22 @@ export default function NewCaseScreen() {
             />
 
             {error ? <Text style={styles.error}>{error}</Text> : null}
-
-            <Pressable
-              style={({ pressed }) => [styles.createBtn, pressed && { opacity: 0.85 }, loading && { opacity: 0.7 }]}
-              onPress={handleCreate}
-              disabled={loading}
-              testID="create-case-button"
-            >
-              {loading
-                ? <ActivityIndicator color="#fff" />
-                : <Text style={styles.createBtnText}>Create Patient Case →</Text>}
-            </Pressable>
           </View>
-
-          <View style={{ height: 80 }} />
         </ScrollView>
+
+        {/* Fixed footer — always visible above keyboard */}
+        <View style={styles.footer}>
+          <Pressable
+            style={({ pressed }) => [styles.createBtn, pressed && { opacity: 0.85 }, loading && { opacity: 0.7 }]}
+            onPress={handleCreate}
+            disabled={loading}
+            testID="create-case-button"
+          >
+            {loading
+              ? <ActivityIndicator color="#fff" />
+              : <Text style={styles.createBtnText}>Create Patient Case →</Text>}
+          </Pressable>
+        </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -125,6 +133,13 @@ const styles = StyleSheet.create({
     fontSize: 16, backgroundColor: "#f8fafc", color: "#1a202c", marginBottom: 16,
   },
   error: { color: "#e53e3e", fontSize: 13, marginBottom: 12 },
+  footer: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: "#fff",
+    borderTopWidth: 1,
+    borderTopColor: "#e2e8f0",
+  },
   createBtn: {
     backgroundColor: "#1a365d", borderRadius: 12, padding: 18,
     alignItems: "center", marginTop: 8,
