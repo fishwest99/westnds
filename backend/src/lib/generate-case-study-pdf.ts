@@ -187,7 +187,7 @@ export async function generateCaseStudyFormPdf(form: Record<string, unknown>): P
       { text: "", marginBottom: 2 } as Content,
 
       // EMG Row 3: Motors / Uppers / Lowers
-      checkboxRow(["Motors", "Uppers", "Lowers"], selectedEMGMuscles),
+      checkboxRow(["Upper MEPs", "Lower MEPs"], selectedEMGMuscles),
       { text: "", marginBottom: 2 } as Content,
 
       // ABR

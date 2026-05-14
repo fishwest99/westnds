@@ -91,7 +91,7 @@ const EP_NERVES = [
 const EMG_MUSCLES = [
   "Trapezius", "Deltoids", "Biceps", "Triceps", "Abductor Pollicis",
   "Vast. Medialis", "EHL", "Anterior Tibialis", "Medial Gastrocs",
-  "Motors", "Uppers", "Lowers",
+  "Upper MEPs", "Lower MEPs",
   "ABR Right", "ABR Left", "ABR Hearing Loss",
   "VER Right", "VER Left",
 ];
