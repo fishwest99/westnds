@@ -130,6 +130,7 @@ model ConsentForm {
   symptomDizziness    Boolean @default(false)
   symptomNumbness     Boolean @default(false)
   symptomTingling     Boolean @default(false)
+  symptomOtherText    String  @default("")
 
   // Other Medical History
   otherMedicalHistory String @default("")

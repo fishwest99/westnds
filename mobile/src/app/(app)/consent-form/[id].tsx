@@ -62,6 +62,7 @@ type ConsentFormData = {
   symptomDizziness: boolean;
   symptomNumbness: boolean;
   symptomTingling: boolean;
+  symptomOtherText: string;
   otherMedicalHistory: string;
   patientGuardianName: string;
   patientSignature: string;
@@ -85,6 +86,7 @@ const defaultForm: ConsentFormData = {
   symptomBurning: false, symptomIncontinence: false, symptomSpasticity: false, symptomWeakness: false,
   symptomCognitive: false, symptomMemory: false, symptomSpeech: false, symptomNaseau: false,
   symptomStroke: false, symptomDizziness: false, symptomNumbness: false, symptomTingling: false,
+  symptomOtherText: "",
   otherMedicalHistory: "", patientGuardianName: "", patientSignature: "", patientSignatureDate: "",
   technicianName: "", technicianSignature: "", technicianDate: "",
 };
@@ -391,6 +393,16 @@ export default function EditConsentFormScreen() {
                   <Checkbox label={label} value={form[key] as boolean} onChange={(v) => update(key, v)} />
                 </View>
               ))}
+            </View>
+            <View style={styles.field}>
+              <Text style={styles.fieldLabel}>Other</Text>
+              <TextInput
+                style={styles.input}
+                value={form.symptomOtherText}
+                onChangeText={(v) => update("symptomOtherText", v)}
+                placeholder="Describe any other symptoms..."
+                testID="symptom-other-input"
+              />
             </View>
           </View>
 
