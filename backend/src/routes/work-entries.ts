@@ -218,6 +218,102 @@ workEntriesRouter.get("/summary", async (c) => {
   });
 });
 
+// GET /api/work-entries/importable-billing-forms — submitted billing forms not yet imported
+workEntriesRouter.get("/importable-billing-forms", async (c) => {
+  const user = c.get("user");
+  if (!user) return c.json({ error: { message: "Unauthorized" } }, 401);
+
+  // Find billing form IDs already imported by this user
+  const imported = await prisma.workEntry.findMany({
+    where: { userId: user.id, billingFormId: { not: null } },
+    select: { billingFormId: true },
+  });
+  const importedIds = new Set(imported.map((e) => e.billingFormId));
+
+  // Find submitted billing forms for this user
+  const forms = await prisma.billingForm.findMany({
+    where: { userId: user.id, status: "submitted" },
+    select: {
+      id: true, patientName: true, facility: true, date: true,
+      startTime: true, endTime: true, totalHours: true, drivingTime: true,
+    },
+    orderBy: { createdAt: "desc" },
+  });
+
+  // Only return forms not yet imported that have the required time fields
+  const importable = forms.filter(
+    (f) =>
+      !importedIds.has(f.id) &&
+      f.startTime.trim() !== "" &&
+      f.endTime.trim() !== "" &&
+      f.date.trim() !== ""
+  );
+
+  return c.json({ data: importable });
+});
+
+// POST /api/work-entries/import-from-billing — import selected billing forms as work entries
+workEntriesRouter.post("/import-from-billing", async (c) => {
+  const user = c.get("user");
+  if (!user) return c.json({ error: { message: "Unauthorized" } }, 401);
+
+  const body = await c.req.json().catch(() => ({}));
+  const ids: string[] = Array.isArray(body.billingFormIds) ? body.billingFormIds : [];
+  if (ids.length === 0) {
+    return c.json({ error: { message: "billingFormIds must be a non-empty array" } }, 400);
+  }
+
+  // Helper: convert MM/DD/YYYY -> YYYY-MM-DD; returns null if invalid
+  function convertDate(d: string): string | null {
+    const m = d.trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (!m) return null;
+    const [, month, day, year] = m as [string, string, string, string];
+    return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+  }
+
+  // Fetch the billing forms (verify ownership)
+  const forms = await prisma.billingForm.findMany({
+    where: { id: { in: ids }, userId: user.id, status: "submitted" },
+  });
+
+  // Check which are already imported
+  const alreadyImported = await prisma.workEntry.findMany({
+    where: { userId: user.id, billingFormId: { in: ids } },
+    select: { billingFormId: true },
+  });
+  const alreadyImportedSet = new Set(alreadyImported.map((e) => e.billingFormId));
+
+  let imported = 0;
+  for (const form of forms) {
+    if (alreadyImportedSet.has(form.id)) continue;
+    const isoDate = convertDate(form.date);
+    if (!isoDate || !form.startTime || !form.endTime) continue;
+
+    // Ensure times are HH:MM (they should be from billing form)
+    const timeRegex = /^\d{2}:\d{2}$/;
+    if (!timeRegex.test(form.startTime) || !timeRegex.test(form.endTime)) continue;
+
+    const drivingMins = parseInt(form.drivingTime ?? "0", 10);
+    const travelMinutes = isNaN(drivingMins) || drivingMins < 0 ? 0 : drivingMins;
+
+    await prisma.workEntry.create({
+      data: {
+        userId: user.id,
+        billingFormId: form.id,
+        facilityName: form.facility || "",
+        date: isoDate,
+        startTime: form.startTime,
+        endTime: form.endTime,
+        travelMinutes,
+        notes: form.patientName ? `Patient: ${form.patientName}` : "",
+      },
+    });
+    imported++;
+  }
+
+  return c.json({ data: { imported } });
+});
+
 // GET /api/work-entries — list current user's entries with optional date range filter
 workEntriesRouter.get("/", async (c) => {
   const user = c.get("user");

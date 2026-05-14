@@ -56,6 +56,7 @@ type BillingFormData = {
   needlesUsed: string;
   needlesRemoved: string;
   totalHours: string;
+  drivingTime: string;
   computerUsed: string;
   cancellation: string;
   neurologist: string;
@@ -78,7 +79,7 @@ const defaultForm: BillingFormData = {
   cptEEG: "", flatFeeMEP: "", baseline: "",
   startTime: "", endTime: "", electrodesUsed: "", thyroidKit: "",
   ssepEMG: "", fluobeam: "", needleCount: "", needlesUsed: "", needlesRemoved: "",
-  totalHours: "", computerUsed: "", cancellation: "", neurologist: "",
+  totalHours: "", drivingTime: "", computerUsed: "", cancellation: "", neurologist: "",
   technicianSignature: "", technicianSignatureDate: "", rnSignature: "", rnSignatureDate: "",
 };
 
@@ -646,6 +647,17 @@ export default function NewBillingFormScreen() {
                 onChangeText={(v) => update("totalHours", v)}
                 placeholder="Total hours"
                 keyboardType="numeric"
+              />
+            </View>
+            <View style={styles.field}>
+              <Text style={styles.fieldLabel}>Driving Time (minutes)</Text>
+              <TextInput
+                style={styles.input}
+                value={form.drivingTime}
+                onChangeText={(v) => update("drivingTime", v)}
+                placeholder="0"
+                keyboardType="numeric"
+                testID="driving-time-input"
               />
             </View>
             <View style={styles.row}>

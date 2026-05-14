@@ -52,6 +52,17 @@ type StaffOverviewData = {
   staff: StaffMemberSummary[];
 };
 
+type ImportableBillingForm = {
+  id: string;
+  patientName: string;
+  facility: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  totalHours: string;
+  drivingTime: string;
+};
+
 type Period = "day" | "week" | "month" | "year";
 
 const PERIODS: { key: Period; label: string }[] = [
@@ -118,6 +129,13 @@ export default function TimeTrackingScreen() {
   const [editVisible, setEditVisible] = useState(false);
   const [editEntry, setEditEntry] = useState<WorkEntry | null>(null);
   const [editForm, setEditForm] = useState({ ...EMPTY_FORM });
+
+  // Import from billing sheets state
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importableForms, setImportableForms] = useState<ImportableBillingForm[]>([]);
+  const [selectedImportIds, setSelectedImportIds] = useState<Set<string>>(new Set());
+  const [loadingImportable, setLoadingImportable] = useState(false);
+  const [importing, setImporting] = useState(false);
 
   // Summary query (my hours)
   const {
@@ -247,6 +265,35 @@ export default function TimeTrackingScreen() {
     editForm.date.trim().length > 0 &&
     editForm.startTime.trim().length > 0 &&
     editForm.endTime.trim().length > 0;
+
+  const openImportModal = async () => {
+    setLoadingImportable(true);
+    setShowImportModal(true);
+    setSelectedImportIds(new Set());
+    try {
+      const result = await api.get<ImportableBillingForm[]>("/api/work-entries/importable-billing-forms");
+      setImportableForms(result ?? []);
+    } finally {
+      setLoadingImportable(false);
+    }
+  };
+
+  const handleImport = async () => {
+    if (selectedImportIds.size === 0) return;
+    setImporting(true);
+    try {
+      await api.post<{ imported: number }>("/api/work-entries/import-from-billing", {
+        billingFormIds: Array.from(selectedImportIds),
+      });
+      queryClient.invalidateQueries({ queryKey: ["work-entries"] });
+      queryClient.invalidateQueries({ queryKey: ["work-summary"] });
+      setShowImportModal(false);
+      setImportableForms([]);
+      setSelectedImportIds(new Set());
+    } finally {
+      setImporting(false);
+    }
+  };
 
   // Computed staff totals
   const staffList: StaffMemberSummary[] = staffOverview?.staff ?? [];
@@ -453,32 +500,48 @@ export default function TimeTrackingScreen() {
             />
           }
           ListHeaderComponent={
-            <View style={styles.summaryCard} testID="summary-card">
-              <Text style={styles.summaryPeriodLabel}>
-                {summary?.periodLabel ?? ""}
-              </Text>
-              <Text style={styles.summaryHours}>
-                {formatMinutes(summary?.totalWorkedMinutes ?? 0)}
-              </Text>
-              <Text style={styles.summaryHoursLabel}>worked</Text>
-              <View style={styles.summaryRow}>
-                <View style={styles.summaryMetric}>
-                  <Text style={styles.summaryMetricValue}>
-                    {formatMinutes(summary?.totalTravelMinutes ?? 0)}
-                  </Text>
-                  <Text style={styles.summaryMetricLabel}>Travel</Text>
-                </View>
-                <View style={styles.summaryDivider} />
-                <View style={styles.summaryMetric}>
-                  <Text style={styles.summaryMetricValue}>
-                    {summary?.entryCount ?? 0}
-                  </Text>
-                  <Text style={styles.summaryMetricLabel}>
-                    {summary?.entryCount === 1 ? "Entry" : "Entries"}
-                  </Text>
+            <>
+              <View style={styles.summaryCard} testID="summary-card">
+                <Text style={styles.summaryPeriodLabel}>
+                  {summary?.periodLabel ?? ""}
+                </Text>
+                <Text style={styles.summaryHours}>
+                  {formatMinutes(summary?.totalWorkedMinutes ?? 0)}
+                </Text>
+                <Text style={styles.summaryHoursLabel}>worked</Text>
+                <View style={styles.summaryRow}>
+                  <View style={styles.summaryMetric}>
+                    <Text style={styles.summaryMetricValue}>
+                      {formatMinutes(summary?.totalTravelMinutes ?? 0)}
+                    </Text>
+                    <Text style={styles.summaryMetricLabel}>Travel</Text>
+                  </View>
+                  <View style={styles.summaryDivider} />
+                  <View style={styles.summaryMetric}>
+                    <Text style={styles.summaryMetricValue}>
+                      {summary?.entryCount ?? 0}
+                    </Text>
+                    <Text style={styles.summaryMetricLabel}>
+                      {summary?.entryCount === 1 ? "Entry" : "Entries"}
+                    </Text>
+                  </View>
                 </View>
               </View>
-            </View>
+              <Pressable
+                style={({ pressed }) => [importStyles.importBanner, pressed && { opacity: 0.85 }]}
+                onPress={openImportModal}
+                testID="import-billing-button"
+              >
+                <View style={importStyles.importBannerLeft}>
+                  <Text style={importStyles.importBannerIcon}>📋</Text>
+                  <View>
+                    <Text style={importStyles.importBannerTitle}>Import from Billing Sheets</Text>
+                    <Text style={importStyles.importBannerSub}>Pull hours & driving time automatically</Text>
+                  </View>
+                </View>
+                <Text style={importStyles.importBannerArrow}>→</Text>
+              </Pressable>
+            </>
           }
           ListEmptyComponent={
             <View style={styles.emptyState} testID="empty-state">
@@ -648,6 +711,97 @@ export default function TimeTrackingScreen() {
             </ScrollView>
           </View>
         </KeyboardAvoidingView>
+      </Modal>
+
+      {/* Import from Billing Modal */}
+      <Modal visible={showImportModal} transparent animationType="slide" onRequestClose={() => setShowImportModal(false)}>
+        <View style={importStyles.modalOverlay}>
+          <View style={importStyles.modalCard}>
+            <View style={importStyles.modalHeader}>
+              <Text style={importStyles.modalTitle}>Import from Billing Sheets</Text>
+              <Pressable onPress={() => setShowImportModal(false)} testID="close-import-modal">
+                <Text style={importStyles.modalClose}>✕</Text>
+              </Pressable>
+            </View>
+
+            {loadingImportable ? (
+              <View style={importStyles.centered}>
+                <ActivityIndicator size="large" color="#2c7a7b" />
+                <Text style={importStyles.loadingText}>Loading billing sheets...</Text>
+              </View>
+            ) : importableForms.length === 0 ? (
+              <View style={importStyles.centered}>
+                <Text style={importStyles.emptyIcon}>✓</Text>
+                <Text style={importStyles.emptyText}>All submitted billing sheets have been imported.</Text>
+              </View>
+            ) : (
+              <>
+                <Pressable
+                  style={importStyles.selectAllBtn}
+                  onPress={() => {
+                    if (selectedImportIds.size === importableForms.length) {
+                      setSelectedImportIds(new Set());
+                    } else {
+                      setSelectedImportIds(new Set(importableForms.map((f) => f.id)));
+                    }
+                  }}
+                >
+                  <Text style={importStyles.selectAllText}>
+                    {selectedImportIds.size === importableForms.length ? "Deselect All" : "Select All"}
+                  </Text>
+                </Pressable>
+
+                <ScrollView style={importStyles.formList} showsVerticalScrollIndicator={false}>
+                  {importableForms.map((form) => {
+                    const isSelected = selectedImportIds.has(form.id);
+                    const drivingMins = parseInt(form.drivingTime || "0", 10);
+                    return (
+                      <Pressable
+                        key={form.id}
+                        style={[importStyles.formRow, isSelected && importStyles.formRowSelected]}
+                        onPress={() => {
+                          const next = new Set(selectedImportIds);
+                          if (isSelected) next.delete(form.id);
+                          else next.add(form.id);
+                          setSelectedImportIds(next);
+                        }}
+                      >
+                        <View style={[importStyles.checkbox, isSelected && importStyles.checkboxSelected]}>
+                          {isSelected ? <Text style={importStyles.checkmark}>✓</Text> : null}
+                        </View>
+                        <View style={importStyles.formRowContent}>
+                          <Text style={importStyles.formPatient}>{form.patientName || "Unknown Patient"}</Text>
+                          <Text style={importStyles.formFacility}>{form.facility || "No facility"}</Text>
+                          <View style={importStyles.formMeta}>
+                            <Text style={importStyles.formMetaText}>{form.date}</Text>
+                            <Text style={importStyles.formMetaDot}>·</Text>
+                            <Text style={importStyles.formMetaText}>{form.startTime} – {form.endTime}</Text>
+                            {form.totalHours ? <><Text style={importStyles.formMetaDot}>·</Text><Text style={importStyles.formMetaText}>{form.totalHours}h</Text></> : null}
+                            {drivingMins > 0 ? <><Text style={importStyles.formMetaDot}>·</Text><Text style={importStyles.formMetaDriving}>🚗 {drivingMins}min</Text></> : null}
+                          </View>
+                        </View>
+                      </Pressable>
+                    );
+                  })}
+                </ScrollView>
+
+                <Pressable
+                  style={[importStyles.importBtn, selectedImportIds.size === 0 && importStyles.importBtnDisabled]}
+                  onPress={handleImport}
+                  disabled={importing || selectedImportIds.size === 0}
+                  testID="confirm-import-button"
+                >
+                  {importing
+                    ? <ActivityIndicator color="#fff" size="small" />
+                    : <Text style={importStyles.importBtnText}>
+                        Import {selectedImportIds.size > 0 ? `${selectedImportIds.size} ` : ""}
+                        {selectedImportIds.size === 1 ? "Entry" : "Entries"}
+                      </Text>}
+                </Pressable>
+              </>
+            )}
+          </View>
+        </View>
       </Modal>
 
       {/* Edit Modal */}
@@ -1090,4 +1244,56 @@ const styles = StyleSheet.create({
     borderColor: "#fed7d7",
   },
   deleteBtnText: { fontSize: 15, fontWeight: "700", color: "#e53e3e" },
+});
+
+const importStyles = StyleSheet.create({
+  importBanner: {
+    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+    backgroundColor: "#e6fffa", borderRadius: 14, padding: 14, marginHorizontal: 16,
+    marginBottom: 12, borderWidth: 1, borderColor: "#81e6d9",
+  },
+  importBannerLeft: { flexDirection: "row", alignItems: "center", gap: 12 },
+  importBannerIcon: { fontSize: 22 },
+  importBannerTitle: { fontSize: 14, fontWeight: "700", color: "#2c7a7b" },
+  importBannerSub: { fontSize: 12, color: "#4a5568", marginTop: 1 },
+  importBannerArrow: { fontSize: 16, color: "#2c7a7b", fontWeight: "700" },
+  modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" },
+  modalCard: {
+    backgroundColor: "#fff", borderTopLeftRadius: 24, borderTopRightRadius: 24,
+    padding: 20, maxHeight: "85%",
+  },
+  modalHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 },
+  modalTitle: { fontSize: 18, fontWeight: "800", color: "#1a202c" },
+  modalClose: { fontSize: 18, color: "#718096", fontWeight: "600" },
+  centered: { alignItems: "center", paddingVertical: 32 },
+  loadingText: { marginTop: 12, color: "#4a5568", fontSize: 15 },
+  emptyIcon: { fontSize: 32, color: "#276749", marginBottom: 8 },
+  emptyText: { fontSize: 15, color: "#4a5568", textAlign: "center", lineHeight: 22 },
+  selectAllBtn: { alignSelf: "flex-end", marginBottom: 10 },
+  selectAllText: { fontSize: 13, color: "#2c7a7b", fontWeight: "600" },
+  formList: { maxHeight: 360 },
+  formRow: {
+    flexDirection: "row", alignItems: "flex-start", paddingVertical: 12,
+    borderBottomWidth: 1, borderBottomColor: "#f0f4f8", gap: 12,
+  },
+  formRowSelected: { backgroundColor: "#e6fffa", borderRadius: 10, paddingHorizontal: 8, marginHorizontal: -8 },
+  checkbox: {
+    width: 22, height: 22, borderRadius: 6, borderWidth: 2, borderColor: "#cbd5e0",
+    justifyContent: "center", alignItems: "center", marginTop: 2, flexShrink: 0,
+  },
+  checkboxSelected: { backgroundColor: "#2c7a7b", borderColor: "#2c7a7b" },
+  checkmark: { color: "#fff", fontSize: 12, fontWeight: "700" },
+  formRowContent: { flex: 1 },
+  formPatient: { fontSize: 15, fontWeight: "700", color: "#1a202c", marginBottom: 2 },
+  formFacility: { fontSize: 13, color: "#4a5568", marginBottom: 4 },
+  formMeta: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 4 },
+  formMetaText: { fontSize: 12, color: "#718096" },
+  formMetaDot: { fontSize: 12, color: "#cbd5e0" },
+  formMetaDriving: { fontSize: 12, color: "#c05621", fontWeight: "600" },
+  importBtn: {
+    backgroundColor: "#2c7a7b", borderRadius: 12, padding: 16,
+    alignItems: "center", marginTop: 16,
+  },
+  importBtnDisabled: { backgroundColor: "#a0aec0" },
+  importBtnText: { color: "#fff", fontSize: 16, fontWeight: "700" },
 });

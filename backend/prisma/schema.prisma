@@ -180,6 +180,7 @@ model WorkEntry {
   endTime        String   // HH:MM (24h)
   travelMinutes  Int      @default(0)
   notes          String   @default("")
+  billingFormId  String?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 }
@@ -274,6 +275,7 @@ model BillingForm {
 
   // Summary
   totalHours   String @default("")
+  drivingTime  String @default("")
   computerUsed String @default("")
   cancellation String @default("")
   neurologist  String @default("")
