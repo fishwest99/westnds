@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@babel/plugin-proposal-export-namespace-from": "^7.18.9",
+    "@better-auth/expo": "^1.6.11",
     "@bottom-tabs/react-navigation": "^0.12.2",
     "@codeherence/react-native-header": "^1.0.0",
     "@expo/html-elements": "^0.13.7",
@@ -42,6 +43,7 @@
     "@shopify/react-native-skia": "2.2.21",
     "@tanstack/react-query": "5.90.2",
     "@vibecodeapp/sdk": "^0.4.14",
+    "better-auth": "^1.6.11",
     "burnt": "0.13.0",
     "clsx": "2.1.1",
     "date-fns": "4.1.0",
