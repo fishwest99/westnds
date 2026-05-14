@@ -109,7 +109,8 @@ export async function generateBillingFormPdf(form: Record<string, unknown>): Pro
               } as TableCell,
               field("Referring Doctor", f("referringDoctor")) as TableCell,
               field("Room #", f("roomNumber")) as TableCell,
-              field("Patient #", f("patientNumber")) as TableCell,
+              field("Patient Acct #", f("patientAcctNumber")) as TableCell,
+              field("Patient MRN", f("patientMRN")) as TableCell,
             ] as TableCell[],
             [
               field("Tech Name", f("techName")),

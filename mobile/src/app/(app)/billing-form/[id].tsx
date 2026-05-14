@@ -23,7 +23,8 @@ type BillingFormData = {
   genderFemale: boolean;
   referringDoctor: string;
   roomNumber: string;
-  patientNumber: string;
+  patientAcctNumber: string;
+  patientMRN: string;
   techName: string;
   facility: string;
   date: string;
@@ -68,7 +69,7 @@ const defaultForm: BillingFormData = {
   status: "draft",
   invoiceNumber: "", poNumber: "",
   patientName: "", age: "", genderMale: false, genderFemale: false,
-  referringDoctor: "", roomNumber: "", patientNumber: "", techName: "",
+  referringDoctor: "", roomNumber: "", patientAcctNumber: "", patientMRN: "", techName: "",
   facility: "", date: "", procedure: "",
   cptVisual: "", cptAuditory: "", cptUpperExtremities: "", cptLowerExtremities: "",
   cptUpperMotorEP: "", cptLowerMotorEP: "", cptRLNMonitoring: "",
@@ -381,14 +382,23 @@ export default function EditBillingFormScreen() {
                 />
               </View>
               <View style={[styles.field, { flex: 1 }]}>
-                <Text style={styles.fieldLabel}>Patient #</Text>
+                <Text style={styles.fieldLabel}>Patient Acct #</Text>
                 <TextInput
                   style={styles.input}
-                  value={form.patientNumber}
-                  onChangeText={(v) => update("patientNumber", v)}
-                  placeholder="Patient #"
+                  value={form.patientAcctNumber}
+                  onChangeText={(v) => update("patientAcctNumber", v)}
+                  placeholder="Patient Acct #"
                 />
               </View>
+            </View>
+            <View style={styles.field}>
+              <Text style={styles.fieldLabel}>Patient MRN</Text>
+              <TextInput
+                style={styles.input}
+                value={form.patientMRN}
+                onChangeText={(v) => update("patientMRN", v)}
+                placeholder="Patient MRN"
+              />
             </View>
             <View style={styles.row}>
               <View style={[styles.field, { flex: 1, marginRight: 8 }]}>
