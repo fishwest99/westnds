@@ -37,6 +37,18 @@ consentFormRouter.get("/latest", async (c) => {
   return c.json({ data: form });
 });
 
+// GET /api/consent-forms/:id — get a single form by ID
+consentFormRouter.get("/:id", async (c) => {
+  const user = c.get("user");
+  if (!user) return c.json({ error: { message: "Unauthorized" } }, 401);
+  const id = c.req.param("id");
+  const form = await prisma.consentForm.findUnique({ where: { id } });
+  if (!form || form.userId !== user.id) {
+    return c.json({ error: { message: "Not found" } }, 404);
+  }
+  return c.json({ data: form });
+});
+
 // POST /api/consent-forms — create new form
 consentFormRouter.post("/", async (c) => {
   const user = c.get("user");

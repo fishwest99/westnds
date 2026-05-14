@@ -4,6 +4,8 @@ import { cors } from "hono/cors";
 import { logger } from "hono/logger";
 import { auth } from "./auth";
 import { consentFormRouter } from "./routes/consent-forms";
+import { onCallRouter } from "./routes/on-call";
+import { timeOffRouter } from "./routes/time-off";
 
 const app = new Hono<{
   Variables: {
@@ -48,6 +50,8 @@ app.use("*", async (c, next) => {
 app.get("/health", (c) => c.json({ status: "ok" }));
 app.on(["GET", "POST"], "/api/auth/*", (c) => auth.handler(c.req.raw));
 app.route("/api/consent-forms", consentFormRouter);
+app.route("/api/on-call", onCallRouter);
+app.route("/api/time-off", timeOffRouter);
 
 const port = Number(process.env.PORT) || 3000;
 

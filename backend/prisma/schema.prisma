@@ -13,11 +13,13 @@ model User {
   email         String         @unique
   emailVerified Boolean        @default(false)
   image         String?
+  isManager     Boolean        @default(false)
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
   sessions      Session[]
   accounts      Account[]
   consentForms  ConsentForm[]
+  timeOffRequests TimeOffRequest[]
 }
 
 model Session {
@@ -134,4 +136,27 @@ model ConsentForm {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   submittedAt DateTime?
+}
+
+model OnCallEntry {
+  id        String   @id @default(cuid())
+  techName  String
+  date      String
+  notes     String   @default("")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model TimeOffRequest {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userName   String
+  startDate  String
+  endDate    String
+  reason     String   @default("")
+  status     String   @default("pending")
+  reviewedBy String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 }
