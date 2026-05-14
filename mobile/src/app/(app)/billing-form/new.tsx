@@ -131,7 +131,8 @@ function calcHours(start: string, end: string): string | null {
   if (s === null || e === null) return null;
   let diff = e - s;
   if (diff < 0) diff += 24 * 60;
-  return (diff / 60).toFixed(2);
+  const rounded = Math.ceil(diff / 15) * 15;
+  return (rounded / 60).toFixed(2);
 }
 
 export default function NewBillingFormScreen() {
