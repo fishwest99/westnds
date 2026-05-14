@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView,
-  ActivityIndicator, Alert, useWindowDimensions, Pressable,
+  ActivityIndicator, useWindowDimensions, Pressable,
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { File as FSFile, Paths } from "expo-file-system";
@@ -122,6 +122,8 @@ export default function EditConsentFormScreen() {
   const [saving, setSaving] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [showAckErrors, setShowAckErrors] = useState(false);
+  const [inlineError, setInlineError] = useState<string | null>(null);
+  const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
   const [emailLoading, setEmailLoading] = useState(false);
   const [shareLoading, setShareLoading] = useState(false);
   const saveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -134,14 +136,11 @@ export default function EditConsentFormScreen() {
     try {
       const result = await api.get<ConsentFormData & { id: string }>(`/api/consent-forms/${formId}`);
       if (!result) {
-        Alert.alert("Error", "Form not found.");
         router.back();
         return;
       }
       setForm({ ...defaultForm, ...result });
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      Alert.alert("Error", `Failed to load form: ${msg}`);
+    } catch {
       router.back();
     } finally {
       setLoading(false);
@@ -167,7 +166,7 @@ export default function EditConsentFormScreen() {
     saveForm(updated);
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = () => {
     if (!id) return;
     const allAcksChecked = form.ackInformedConsent && form.ackAssignmentRights && form.ackAuthRelease && form.ackSurpriseBalance && form.ackFinancialResp;
     if (!allAcksChecked) {
@@ -175,30 +174,26 @@ export default function EditConsentFormScreen() {
       return;
     }
     if (!form.patientGuardianName.trim() || !form.patientSignature.trim()) {
-      Alert.alert("Required", "Please provide patient/guardian name and signature before submitting.");
+      setInlineError("Please provide patient/guardian name and signature before submitting.");
       return;
     }
-    Alert.alert(
-      "Submit Form",
-      "By submitting, you confirm your consent to these procedures and acknowledge your benefits and financial responsibility.",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Submit",
-          onPress: async () => {
-            setSubmitting(true);
-            try {
-              await api.post(`/api/consent-forms/${id}/submit`, {});
-              setForm((f) => ({ ...f, status: "submitted" }));
-            } catch {
-              Alert.alert("Error", "Failed to submit form.");
-            } finally {
-              setSubmitting(false);
-            }
-          },
-        },
-      ]
-    );
+    setInlineError(null);
+    setShowSubmitConfirm(true);
+  };
+
+  const doSubmit = async () => {
+    if (!id) return;
+    setSubmitting(true);
+    try {
+      await api.post(`/api/consent-forms/${id}/submit`, {});
+      setForm((f) => ({ ...f, status: "submitted" }));
+      setShowSubmitConfirm(false);
+    } catch {
+      setInlineError("Failed to submit form. Please try again.");
+      setShowSubmitConfirm(false);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const downloadPdf = async (): Promise<string | null> => {
@@ -213,7 +208,7 @@ export default function EditConsentFormScreen() {
       );
       return result.uri;
     } catch {
-      Alert.alert("Error", "Failed to download PDF");
+      setInlineError("Failed to download PDF. Please try again.");
       return null;
     }
   };
@@ -221,7 +216,7 @@ export default function EditConsentFormScreen() {
   const handleEmailPdf = async () => {
     const isAvailable = await MailComposer.isAvailableAsync();
     if (!isAvailable) {
-      Alert.alert("Not Available", "Email is not available on this device. Try 'Share PDF' instead.");
+      setInlineError("Email is not available on this device. Try 'Share PDF' instead.");
       return;
     }
     setEmailLoading(true);
@@ -245,7 +240,7 @@ export default function EditConsentFormScreen() {
       if (!fileUri) return;
       const canShare = await Sharing.isAvailableAsync();
       if (!canShare) {
-        Alert.alert("Not Available", "Sharing is not available on this device.");
+        setInlineError("Sharing is not available on this device.");
         return;
       }
       await Sharing.shareAsync(fileUri, {
@@ -516,9 +511,32 @@ export default function EditConsentFormScreen() {
                   <Text style={styles.ackErrorText}>⚠ Please check all acknowledgment boxes in the legal section above before submitting.</Text>
                 </View>
               ) : null}
-              <TouchableOpacity style={styles.submitButton} onPress={handleSubmit} disabled={submitting} testID="submit-button">
-                {submitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitText}>Submit Consent Form</Text>}
-              </TouchableOpacity>
+              {inlineError ? (
+                <View style={styles.inlineErrorBanner}>
+                  <Text style={styles.inlineErrorText}>⚠ {inlineError}</Text>
+                  <TouchableOpacity onPress={() => setInlineError(null)} style={styles.inlineErrorDismiss}>
+                    <Text style={styles.inlineErrorDismissText}>✕</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : null}
+              {showSubmitConfirm ? (
+                <View style={styles.confirmBox}>
+                  <Text style={styles.confirmTitle}>Confirm Submission</Text>
+                  <Text style={styles.confirmText}>By submitting, you confirm your consent to these procedures and acknowledge your benefits and financial responsibility.</Text>
+                  <View style={styles.confirmButtons}>
+                    <TouchableOpacity style={styles.cancelBtn} onPress={() => setShowSubmitConfirm(false)} disabled={submitting}>
+                      <Text style={styles.cancelBtnText}>Cancel</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.confirmBtn} onPress={doSubmit} disabled={submitting} testID="confirm-submit-button">
+                      {submitting ? <ActivityIndicator color="#fff" size="small" /> : <Text style={styles.confirmBtnText}>Submit</Text>}
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ) : (
+                <TouchableOpacity style={styles.submitButton} onPress={handleSubmit} disabled={submitting} testID="submit-button">
+                  {submitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitText}>Submit Consent Form</Text>}
+                </TouchableOpacity>
+              )}
             </>
           )}
 
@@ -571,6 +589,18 @@ const styles = StyleSheet.create({
   checkLabelError: { color: "#e53e3e" },
   ackErrorBanner: { backgroundColor: "#fff5f5", borderWidth: 1, borderColor: "#e53e3e", borderRadius: 8, padding: 12, marginBottom: 10 },
   ackErrorText: { color: "#c53030", fontSize: 13, fontWeight: "600", lineHeight: 18 },
+  inlineErrorBanner: { backgroundColor: "#fff5f5", borderWidth: 1, borderColor: "#e53e3e", borderRadius: 8, padding: 12, marginBottom: 10, flexDirection: "row", alignItems: "flex-start" },
+  inlineErrorText: { color: "#c53030", fontSize: 13, fontWeight: "600", lineHeight: 18, flex: 1 },
+  inlineErrorDismiss: { paddingLeft: 8 },
+  inlineErrorDismissText: { color: "#c53030", fontSize: 16, fontWeight: "700" },
+  confirmBox: { backgroundColor: "#ebf4ff", borderWidth: 1.5, borderColor: "#2b6cb0", borderRadius: 12, padding: 16, marginBottom: 10 },
+  confirmTitle: { fontSize: 15, fontWeight: "700", color: "#1a365d", marginBottom: 8 },
+  confirmText: { fontSize: 13, color: "#2d3748", lineHeight: 19, marginBottom: 14 },
+  confirmButtons: { flexDirection: "row", gap: 10 },
+  cancelBtn: { flex: 1, borderWidth: 1.5, borderColor: "#2b6cb0", borderRadius: 8, padding: 12, alignItems: "center" },
+  cancelBtnText: { color: "#2b6cb0", fontSize: 14, fontWeight: "700" },
+  confirmBtn: { flex: 1, backgroundColor: "#276749", borderRadius: 8, padding: 12, alignItems: "center" },
+  confirmBtnText: { color: "#fff", fontSize: 14, fontWeight: "700" },
   checkBoxChecked: { backgroundColor: "#2b6cb0", borderColor: "#2b6cb0" },
   checkMark: { color: "#fff", fontSize: 12, fontWeight: "700" },
   checkLabel: { fontSize: 13, color: "#2d3748", flex: 1 },
