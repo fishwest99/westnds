@@ -538,7 +538,7 @@ export default function EditBillingFormScreen() {
               value={form.cptCranialBilateral} onChange={(v) => update("cptCranialBilateral", v)}
             />
             <ModalityRow
-              label="Electrocorticography" cptCode="95829"
+              label="Electrocorticography" cptCode="95955"
               value={form.cptElectrocorticography} onChange={(v) => update("cptElectrocorticography", v)}
             />
             <ModalityRow
@@ -635,7 +635,7 @@ export default function EditBillingFormScreen() {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Summary</Text>
             <View style={styles.field}>
-              <Text style={styles.fieldLabel}>Total Hours (95940 x SSEP/EMG/EEG)</Text>
+              <Text style={styles.fieldLabel}>Total Hours (95940, 95941, G0453)</Text>
               <TextInput
                 style={styles.input}
                 value={form.totalHours}

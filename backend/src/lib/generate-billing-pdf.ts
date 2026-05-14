@@ -51,7 +51,7 @@ export async function generateBillingFormPdf(form: Record<string, unknown>): Pro
     ["95908 — 4 Ext. EMG", "cptFourExtEMG"],
     ["92585 — Cranial (Unilateral)", "cptCranialUnilateral"],
     ["92586 — Cranial (Bilateral)", "cptCranialBilateral"],
-    ["95829 — Electrocorticography", "cptElectrocorticography"],
+    ["95955 — Electrocorticography", "cptElectrocorticography"],
     ["Stat Fee", "cptStatFee"],
     ["95940 — Standby", "cptStandby"],
   ], f, true);
