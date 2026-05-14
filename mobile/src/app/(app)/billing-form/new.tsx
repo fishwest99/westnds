@@ -11,6 +11,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { authClient } from "@/lib/auth/auth-client";
 import { api } from "@/lib/api/api";
 import { SignaturePad } from "@/components/SignaturePad";
+import { DatePickerInput } from "@/components/DatePickerInput";
 
 type BillingFormData = {
   id?: string;
@@ -455,11 +456,11 @@ export default function NewBillingFormScreen() {
               </View>
               <View style={[styles.field, { flex: 1 }]}>
                 <Text style={styles.fieldLabel}>Date</Text>
-                <TextInput
-                  style={styles.input}
+                <DatePickerInput
                   value={form.date}
-                  onChangeText={(v) => update("date", v)}
-                  placeholder="MM/DD/YYYY"
+                  onChange={(v) => update("date", v)}
+                  format="MM/DD/YYYY"
+                  testID="date-picker"
                 />
               </View>
             </View>
@@ -717,11 +718,10 @@ export default function NewBillingFormScreen() {
             </View>
             <View style={styles.field}>
               <Text style={styles.fieldLabel}>Date</Text>
-              <TextInput
-                style={styles.input}
+              <DatePickerInput
                 value={form.technicianSignatureDate}
-                onChangeText={(v) => update("technicianSignatureDate", v)}
-                placeholder="MM/DD/YYYY"
+                onChange={(v) => update("technicianSignatureDate", v)}
+                format="MM/DD/YYYY"
                 testID="technician-date-input"
               />
             </View>
@@ -738,11 +738,10 @@ export default function NewBillingFormScreen() {
             </View>
             <View style={styles.field}>
               <Text style={styles.fieldLabel}>Date</Text>
-              <TextInput
-                style={styles.input}
+              <DatePickerInput
                 value={form.rnSignatureDate}
-                onChangeText={(v) => update("rnSignatureDate", v)}
-                placeholder="MM/DD/YYYY"
+                onChange={(v) => update("rnSignatureDate", v)}
+                format="MM/DD/YYYY"
                 testID="rn-date-input"
               />
             </View>

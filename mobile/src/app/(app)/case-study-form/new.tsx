@@ -19,6 +19,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { authClient } from "@/lib/auth/auth-client";
 import { api } from "@/lib/api/api";
 import { SignaturePad } from "@/components/SignaturePad";
+import { DatePickerInput } from "@/components/DatePickerInput";
 
 type CaseStudyFormData = {
   id?: string;
@@ -380,12 +381,11 @@ export default function NewCaseStudyFormScreen() {
             <View style={styles.row}>
               <View style={[styles.field, { flex: 1, marginRight: 8 }]}>
                 <Text style={styles.fieldLabel}>Date</Text>
-                <TextInput
-                  style={styles.input}
+                <DatePickerInput
                   value={form.date}
-                  onChangeText={(v) => update("date", v)}
-                  placeholder="MM/DD/YYYY"
-                  testID="date-input"
+                  onChange={(v) => update("date", v)}
+                  format="MM/DD/YYYY"
+                  testID="date-picker"
                 />
               </View>
               <View style={[styles.field, { flex: 1 }]}>

@@ -11,6 +11,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { authClient } from "@/lib/auth/auth-client";
 import { api } from "@/lib/api/api";
 import { SignaturePad } from "@/components/SignaturePad";
+import { DatePickerInput } from "@/components/DatePickerInput";
 
 type ConsentFormData = {
   id?: string;
@@ -301,11 +302,22 @@ export default function EditConsentFormScreen() {
             <View style={styles.row}>
               <View style={[styles.field, { flex: 1, marginRight: 8 }]}>
                 <Text style={styles.fieldLabel}>Date of Birth</Text>
-                <TextInput style={styles.input} value={form.dateOfBirth} onChangeText={(v) => update("dateOfBirth", v)} placeholder="MM/DD/YYYY" />
+                <DatePickerInput
+                  value={form.dateOfBirth}
+                  onChange={(v) => update("dateOfBirth", v)}
+                  format="MM/DD/YYYY"
+                  minDate="1930-01-01"
+                  testID="date-of-birth-picker"
+                />
               </View>
               <View style={[styles.field, { flex: 1 }]}>
                 <Text style={styles.fieldLabel}>Date of Service *</Text>
-                <TextInput style={styles.input} value={form.dateOfService} onChangeText={(v) => update("dateOfService", v)} placeholder="MM/DD/YYYY" />
+                <DatePickerInput
+                  value={form.dateOfService}
+                  onChange={(v) => update("dateOfService", v)}
+                  format="MM/DD/YYYY"
+                  testID="date-of-service-picker"
+                />
               </View>
             </View>
             <View style={styles.field}>
@@ -426,7 +438,12 @@ export default function EditConsentFormScreen() {
             </View>
             <View style={styles.field}>
               <Text style={styles.fieldLabel}>Date</Text>
-              <TextInput style={styles.input} value={form.patientSignatureDate} onChangeText={(v) => update("patientSignatureDate", v)} placeholder="MM/DD/YYYY" />
+              <DatePickerInput
+                value={form.patientSignatureDate}
+                onChange={(v) => update("patientSignatureDate", v)}
+                format="MM/DD/YYYY"
+                testID="patient-signature-date-picker"
+              />
             </View>
 
             <View style={styles.divider} />
@@ -442,7 +459,12 @@ export default function EditConsentFormScreen() {
             </View>
             <View style={styles.field}>
               <Text style={styles.fieldLabel}>Date</Text>
-              <TextInput style={styles.input} value={form.technicianDate} onChangeText={(v) => update("technicianDate", v)} placeholder="MM/DD/YYYY" />
+              <DatePickerInput
+                value={form.technicianDate}
+                onChange={(v) => update("technicianDate", v)}
+                format="MM/DD/YYYY"
+                testID="technician-date-picker"
+              />
             </View>
           </View>
 

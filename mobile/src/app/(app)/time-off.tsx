@@ -7,6 +7,7 @@ import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api/api";
+import { DatePickerInput } from "@/components/DatePickerInput";
 
 type TimeOffRequest = {
   id: string;
@@ -195,23 +196,25 @@ export default function TimeOffScreen() {
           <View style={styles.modalCard}>
             <Text style={styles.modalTitle}>New Time Off Request</Text>
 
-            <Text style={styles.inputLabel}>Start Date (e.g. 2025-01-20)</Text>
-            <TextInput
-              style={styles.input}
-              value={startDate}
-              onChangeText={setStartDate}
-              placeholder="YYYY-MM-DD"
-              testID="start-date-input"
-            />
+            <Text style={styles.inputLabel}>Start Date</Text>
+            <View style={{ marginBottom: 14 }}>
+              <DatePickerInput
+                value={startDate}
+                onChange={setStartDate}
+                format="YYYY-MM-DD"
+                testID="start-date-input"
+              />
+            </View>
 
             <Text style={styles.inputLabel}>End Date</Text>
-            <TextInput
-              style={styles.input}
-              value={endDate}
-              onChangeText={setEndDate}
-              placeholder="YYYY-MM-DD"
-              testID="end-date-input"
-            />
+            <View style={{ marginBottom: 14 }}>
+              <DatePickerInput
+                value={endDate}
+                onChange={setEndDate}
+                format="YYYY-MM-DD"
+                testID="end-date-input"
+              />
+            </View>
 
             <Text style={styles.inputLabel}>Reason</Text>
             <TextInput

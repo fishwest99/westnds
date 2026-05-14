@@ -11,6 +11,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { authClient } from "@/lib/auth/auth-client";
 import { api } from "@/lib/api/api";
 import { SignaturePad } from "@/components/SignaturePad";
+import { DatePickerInput } from "@/components/DatePickerInput";
 
 type MedicalLienFormData = {
   id?: string;
@@ -244,22 +245,20 @@ export default function EditMedicalLienFormScreen() {
             <View style={styles.row}>
               <View style={[styles.field, { flex: 1, marginRight: 8 }]}>
                 <Text style={styles.fieldLabel}>Date of Accident / Injury</Text>
-                <TextInput
-                  style={styles.input}
+                <DatePickerInput
                   value={form.dateOfAccident}
-                  onChangeText={(v) => update("dateOfAccident", v)}
-                  placeholder="MM/DD/YYYY"
-                  testID="date-of-accident-input"
+                  onChange={(v) => update("dateOfAccident", v)}
+                  format="MM/DD/YYYY"
+                  testID="date-of-accident-picker"
                 />
               </View>
               <View style={[styles.field, { flex: 1 }]}>
                 <Text style={styles.fieldLabel}>Date of Surgery</Text>
-                <TextInput
-                  style={styles.input}
+                <DatePickerInput
                   value={form.dateOfSurgery}
-                  onChangeText={(v) => update("dateOfSurgery", v)}
-                  placeholder="MM/DD/YYYY"
-                  testID="date-of-surgery-input"
+                  onChange={(v) => update("dateOfSurgery", v)}
+                  format="MM/DD/YYYY"
+                  testID="date-of-surgery-picker"
                 />
               </View>
             </View>
@@ -344,12 +343,11 @@ export default function EditMedicalLienFormScreen() {
             </View>
             <View style={styles.field}>
               <Text style={styles.fieldLabel}>Date</Text>
-              <TextInput
-                style={styles.input}
+              <DatePickerInput
                 value={form.patientDate}
-                onChangeText={(v) => update("patientDate", v)}
-                placeholder="MM/DD/YYYY"
-                testID="patient-date-input"
+                onChange={(v) => update("patientDate", v)}
+                format="MM/DD/YYYY"
+                testID="patient-date-picker"
               />
             </View>
           </View>
@@ -377,12 +375,11 @@ export default function EditMedicalLienFormScreen() {
             </View>
             <View style={styles.field}>
               <Text style={styles.fieldLabel}>Date</Text>
-              <TextInput
-                style={styles.input}
+              <DatePickerInput
                 value={form.attorneyDate}
-                onChangeText={(v) => update("attorneyDate", v)}
-                placeholder="MM/DD/YYYY"
-                testID="attorney-date-input"
+                onChange={(v) => update("attorneyDate", v)}
+                format="MM/DD/YYYY"
+                testID="attorney-date-picker"
               />
             </View>
           </View>

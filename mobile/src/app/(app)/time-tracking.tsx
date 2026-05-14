@@ -18,6 +18,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api/api";
 import { useSession } from "@/lib/auth/use-session";
+import { DatePickerInput } from "@/components/DatePickerInput";
 
 type WorkEntry = {
   id: string;
@@ -922,14 +923,14 @@ export default function TimeTrackingScreen() {
               />
 
               <Text style={styles.inputLabel}>Date</Text>
-              <TextInput
-                style={styles.input}
-                value={form.date}
-                onChangeText={(v) => setForm((f) => ({ ...f, date: v }))}
-                placeholder="YYYY-MM-DD"
-                placeholderTextColor="#a0aec0"
-                testID="date-input"
-              />
+              <View style={{ marginBottom: 14 }}>
+                <DatePickerInput
+                  value={form.date}
+                  onChange={(v) => setForm((f) => ({ ...f, date: v }))}
+                  format="YYYY-MM-DD"
+                  testID="date-input"
+                />
+              </View>
 
               <View style={styles.row}>
                 <View style={styles.halfField}>
@@ -1033,14 +1034,14 @@ export default function TimeTrackingScreen() {
               />
 
               <Text style={styles.inputLabel}>Date</Text>
-              <TextInput
-                style={styles.input}
-                value={editForm.date}
-                onChangeText={(v) => setEditForm((f) => ({ ...f, date: v }))}
-                placeholder="YYYY-MM-DD"
-                placeholderTextColor="#a0aec0"
-                testID="edit-date-input"
-              />
+              <View style={{ marginBottom: 14 }}>
+                <DatePickerInput
+                  value={editForm.date}
+                  onChange={(v) => setEditForm((f) => ({ ...f, date: v }))}
+                  format="YYYY-MM-DD"
+                  testID="edit-date-input"
+                />
+              </View>
 
               <View style={styles.row}>
                 <View style={styles.halfField}>
@@ -1156,15 +1157,15 @@ export default function TimeTrackingScreen() {
                 testID="req-facility-name-input"
               />
 
-              <Text style={styles.inputLabel}>Date (YYYY-MM-DD)</Text>
-              <TextInput
-                style={styles.input}
-                value={requestForm.date}
-                onChangeText={(v) => setRequestForm((f) => ({ ...f, date: v }))}
-                placeholder="2026-05-14"
-                placeholderTextColor="#a0aec0"
-                testID="req-date-input"
-              />
+              <Text style={styles.inputLabel}>Date</Text>
+              <View style={{ marginBottom: 14 }}>
+                <DatePickerInput
+                  value={requestForm.date}
+                  onChange={(v) => setRequestForm((f) => ({ ...f, date: v }))}
+                  format="YYYY-MM-DD"
+                  testID="req-date-input"
+                />
+              </View>
 
               <View style={styles.row}>
                 <View style={styles.halfField}>
