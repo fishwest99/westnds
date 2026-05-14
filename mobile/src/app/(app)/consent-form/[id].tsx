@@ -174,11 +174,6 @@ export default function EditConsentFormScreen() {
 
   const handleSubmit = () => {
     if (!id) return;
-    const allAcksChecked = form.ackInformedConsent && form.ackAssignmentRights && form.ackAuthRelease && form.ackSurpriseBalance && form.ackFinancialResp;
-    if (!allAcksChecked) {
-      setShowAckErrors(true);
-      return;
-    }
     if (!form.patientGuardianName.trim() || !form.patientSignature.trim()) {
       setInlineError("Please provide patient/guardian name and signature before submitting.");
       return;
