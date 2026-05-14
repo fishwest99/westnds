@@ -132,6 +132,13 @@ model ConsentForm {
   symptomTingling     Boolean @default(false)
   symptomOtherText    String  @default("")
 
+  // Legal Acknowledgments
+  ackInformedConsent  Boolean @default(false)
+  ackAssignmentRights Boolean @default(false)
+  ackAuthRelease      Boolean @default(false)
+  ackSurpriseBalance  Boolean @default(false)
+  ackFinancialResp    Boolean @default(false)
+
   // Other Medical History
   otherMedicalHistory String @default("")
 
