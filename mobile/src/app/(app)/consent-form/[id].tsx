@@ -167,9 +167,11 @@ export default function EditConsentFormScreen() {
   }, [id]);
 
   const update = (key: keyof ConsentFormData, value: string | boolean) => {
-    const updated = { ...form, [key]: value };
-    setForm(updated);
-    saveForm(updated);
+    setForm((prev) => {
+      const updated = { ...prev, [key]: value };
+      saveForm(updated);
+      return updated;
+    });
   };
 
   const handleSubmit = () => {

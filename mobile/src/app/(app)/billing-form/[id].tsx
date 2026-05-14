@@ -188,17 +188,19 @@ export default function EditBillingFormScreen() {
   }, [id]);
 
   const update = (key: keyof BillingFormData, value: string | boolean) => {
-    const updated = { ...form, [key]: value };
-    if (key === "genderMale" && value === true) updated.genderFemale = false;
-    if (key === "genderFemale" && value === true) updated.genderMale = false;
-    if (key === "startTime" || key === "endTime") {
-      const start = key === "startTime" ? value as string : form.startTime;
-      const end = key === "endTime" ? value as string : form.endTime;
-      const computed = calcHours(start, end);
-      if (computed !== null) updated.totalHours = computed;
-    }
-    setForm(updated);
-    saveForm(updated);
+    setForm((prev) => {
+      const updated = { ...prev, [key]: value };
+      if (key === "genderMale" && value === true) updated.genderFemale = false;
+      if (key === "genderFemale" && value === true) updated.genderMale = false;
+      if (key === "startTime" || key === "endTime") {
+        const start = key === "startTime" ? (value as string) : prev.startTime;
+        const end = key === "endTime" ? (value as string) : prev.endTime;
+        const computed = calcHours(start, end);
+        if (computed !== null) updated.totalHours = computed;
+      }
+      saveForm(updated);
+      return updated;
+    });
   };
 
   const needleMismatch =
