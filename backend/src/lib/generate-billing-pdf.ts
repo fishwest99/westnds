@@ -38,11 +38,11 @@ export async function generateBillingFormPdf(form: Record<string, unknown>): Pro
 
   const evokedRows = cptRows([
     ["95930 — Visual EP", "cptVisual"],
-    ["95925 — Auditory EP", "cptAuditory"],
-    ["95925 — Upper Extremities SSEP", "cptUpperExtremities"],
-    ["95926 — Lower Extremities SSEP", "cptLowerExtremities"],
-    ["95928 — Upper Motor EP (TcMEP)", "cptUpperMotorEP"],
-    ["95929 — Lower Motor EP (TcMEP)", "cptLowerMotorEP"],
+    ["95938 — Auditory EP", "cptAuditory"],
+    ["95938 — Upper Extremities SSEP", "cptUpperExtremities"],
+    ["95938 — Lower Extremities SSEP", "cptLowerExtremities"],
+    ["95939 — Upper Motor EP (TcMEP)", "cptUpperMotorEP"],
+    ["95939 — Lower Motor EP (TcMEP)", "cptLowerMotorEP"],
     ["95941 — RLN Monitoring", "cptRLNMonitoring"],
   ], f, true);
 
@@ -186,7 +186,7 @@ export async function generateBillingFormPdf(form: Record<string, unknown>): Pro
               { text: "Used", bold: true, alignment: "center" as const } as TableCell,
             ],
             ...cptRows([
-              ["95813 — Electroencephalography (Continuous EEG)", "cptEEG"],
+              ["95955 — Electroencephalography (Continuous EEG)", "cptEEG"],
               ["Motor Evoked Potentials", "flatFeeMEP"],
             ], f, true),
             [

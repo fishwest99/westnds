@@ -493,23 +493,23 @@ export default function EditBillingFormScreen() {
               value={form.cptAuditory} onChange={(v) => update("cptAuditory", v)}
             />
             <ModalityRow
-              label="Upper Extremities" cptCode="95925"
+              label="Upper Extremities" cptCode="95938"
               value={form.cptUpperExtremities} onChange={(v) => update("cptUpperExtremities", v)}
             />
             <ModalityRow
-              label="Lower Extremities" cptCode="95926"
+              label="Lower Extremities" cptCode="95938"
               value={form.cptLowerExtremities} onChange={(v) => update("cptLowerExtremities", v)}
             />
             <ModalityRow
-              label="Upper Motor EP" cptCode="95928"
+              label="Upper Motor EP" cptCode="95939"
               value={form.cptUpperMotorEP} onChange={(v) => update("cptUpperMotorEP", v)}
             />
             <ModalityRow
-              label="Lower Motor EP" cptCode="95929"
+              label="Lower Motor EP" cptCode="95939"
               value={form.cptLowerMotorEP} onChange={(v) => update("cptLowerMotorEP", v)}
             />
             <ModalityRow
-              label="RLN Monitoring" cptCode="95868"
+              label="RLN Monitoring" cptCode="95870"
               value={form.cptRLNMonitoring} onChange={(v) => update("cptRLNMonitoring", v)}
             />
           </View>
@@ -530,11 +530,11 @@ export default function EditBillingFormScreen() {
               value={form.cptFourExtEMG} onChange={(v) => update("cptFourExtEMG", v)}
             />
             <ModalityRow
-              label="Cranial Nerves Unilateral" cptCode="95867"
+              label="Cranial Nerves Unilateral" cptCode="95870"
               value={form.cptCranialUnilateral} onChange={(v) => update("cptCranialUnilateral", v)}
             />
             <ModalityRow
-              label="Cranial Nerves Bilateral" cptCode="95868"
+              label="Cranial Nerves Bilateral" cptCode="95870"
               value={form.cptCranialBilateral} onChange={(v) => update("cptCranialBilateral", v)}
             />
             <ModalityRow
@@ -559,7 +559,7 @@ export default function EditBillingFormScreen() {
               <Text style={[styles.modalityHeaderText, { width: 52, textAlign: "center" }]}>Used</Text>
             </View>
             <ModalityRow
-              label="Electroencephalography — Continuous EEG" cptCode="95813"
+              label="Electroencephalography — Continuous EEG" cptCode="95955"
               value={form.cptEEG} onChange={(v) => update("cptEEG", v)}
             />
             <ModalityRow
