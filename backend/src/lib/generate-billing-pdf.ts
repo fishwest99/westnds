@@ -53,7 +53,7 @@ export async function generateBillingFormPdf(form: Record<string, unknown>): Pro
     ["92586 — Cranial (Bilateral)", "cptCranialBilateral"],
     ["95955 — Electrocorticography", "cptElectrocorticography"],
     ["Stat Fee", "cptStatFee"],
-    ["95940 — Standby", "cptStandby"],
+    [`95940 — Standby (${f("standbyHours") || "0"} hrs)`, "cptStandby"],
   ], f, true);
 
   const techSig = f("technicianSignature");

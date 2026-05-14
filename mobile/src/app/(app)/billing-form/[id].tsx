@@ -43,6 +43,7 @@ type BillingFormData = {
   cptElectrocorticography: string;
   cptStatFee: string;
   cptStandby: string;
+  standbyHours: string;
   cptEEG: string;
   flatFeeMEP: string;
   baseline: string;
@@ -75,7 +76,7 @@ const defaultForm: BillingFormData = {
   cptVisual: "", cptAuditory: "", cptUpperExtremities: "", cptLowerExtremities: "",
   cptUpperMotorEP: "", cptLowerMotorEP: "", cptRLNMonitoring: "",
   cptTwoExtEMG: "", cptFourExtEMG: "", cptCranialUnilateral: "", cptCranialBilateral: "",
-  cptElectrocorticography: "", cptStatFee: "", cptStandby: "",
+  cptElectrocorticography: "", cptStatFee: "", cptStandby: "", standbyHours: "",
   cptEEG: "", flatFeeMEP: "", baseline: "",
   startTime: "", endTime: "", electrodesUsed: "", thyroidKit: "",
   ssepEMG: "", fluobeam: "", needleCount: "", needlesUsed: "", needlesRemoved: "",
@@ -549,6 +550,17 @@ export default function EditBillingFormScreen() {
               label="Standby" cptCode=""
               value={form.cptStandby} onChange={(v) => update("cptStandby", v)}
             />
+            <View style={[styles.field, { paddingHorizontal: 12, paddingBottom: 8 }]}>
+              <Text style={styles.fieldLabel}>Standby Hours</Text>
+              <TextInput
+                style={styles.input}
+                value={form.standbyHours}
+                onChangeText={(v) => update("standbyHours", v)}
+                placeholder="0"
+                keyboardType="numeric"
+                testID="standby-hours-input"
+              />
+            </View>
           </View>
 
           {/* EEG & MEP Monitoring */}

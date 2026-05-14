@@ -272,6 +272,7 @@ model BillingForm {
   cptElectrocorticography String @default("")
   cptStatFee            String @default("")
   cptStandby            String @default("")
+  standbyHours          String @default("")
 
   // EEG/Monitoring
   cptEEG      String @default("")
