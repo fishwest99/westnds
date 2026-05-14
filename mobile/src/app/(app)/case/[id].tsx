@@ -1,10 +1,10 @@
 import React, { useState } from "react";
 import {
-  View, Text, StyleSheet, ScrollView, Pressable, ActivityIndicator, RefreshControl,
+  View, Text, StyleSheet, ScrollView, Pressable, ActivityIndicator, RefreshControl, Modal,
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api/api";
 
 type FormSummary = { id: string; status: string };
@@ -75,11 +75,21 @@ export default function PatientCaseScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const queryClient = useQueryClient();
   const [creatingForm, setCreatingForm] = useState<string | null>(null);
+  const [showCloseModal, setShowCloseModal] = useState(false);
 
   const { data, isLoading, refetch, isRefetching } = useQuery({
     queryKey: ["case", id],
     queryFn: () => api.get<PatientCase>(`/api/cases/${id}`),
     enabled: !!id,
+  });
+
+  const closeMutation = useMutation({
+    mutationFn: () => api.put(`/api/cases/${id}`, { status: "closed" }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["case", id] });
+      queryClient.invalidateQueries({ queryKey: ["cases"] });
+      setShowCloseModal(false);
+    },
   });
 
   const handleFormPress = async (card: FormCard) => {
@@ -148,7 +158,9 @@ export default function PatientCaseScreen() {
           </Pressable>
           <Text style={styles.patientName}>{data.patientName}</Text>
           {data.date ? <Text style={styles.dateText}>{data.date}</Text> : null}
-          <Text style={styles.headerSub}>Select a form to fill out</Text>
+          {data.status === "closed"
+            ? <View style={styles.closedBadge}><Text style={styles.closedBadgeText}>✓ Case Closed</Text></View>
+            : <Text style={styles.headerSub}>Select a form to fill out</Text>}
         </View>
 
         {/* Form Cards */}
@@ -189,8 +201,52 @@ export default function PatientCaseScreen() {
           })}
         </View>
 
+        {/* Close Out Case */}
+        {data.status !== "closed" && (
+          <View style={styles.closeSection}>
+            <Pressable
+              style={({ pressed }) => [styles.closeBtn, { opacity: pressed ? 0.85 : 1 }]}
+              onPress={() => setShowCloseModal(true)}
+              testID="close-case-button"
+            >
+              <Text style={styles.closeBtnText}>Close Out Case</Text>
+            </Pressable>
+          </View>
+        )}
+
         <View style={{ height: 40 }} />
       </ScrollView>
+
+      {/* Confirmation Modal */}
+      <Modal visible={showCloseModal} transparent animationType="fade" onRequestClose={() => setShowCloseModal(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Close Out Case?</Text>
+            <Text style={styles.modalBody}>
+              This will mark the case for {data.patientName} as closed. You can still view the forms but no further changes are expected.
+            </Text>
+            <View style={styles.modalActions}>
+              <Pressable
+                style={[styles.modalBtn, styles.modalBtnCancel]}
+                onPress={() => setShowCloseModal(false)}
+                testID="cancel-close-button"
+              >
+                <Text style={styles.modalBtnCancelText}>Cancel</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.modalBtn, styles.modalBtnConfirm]}
+                onPress={() => closeMutation.mutate()}
+                disabled={closeMutation.isPending}
+                testID="confirm-close-button"
+              >
+                {closeMutation.isPending
+                  ? <ActivityIndicator color="#fff" size="small" />
+                  : <Text style={styles.modalBtnConfirmText}>Close Case</Text>}
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -230,4 +286,19 @@ const styles = StyleSheet.create({
   badgeText: { fontSize: 12, fontWeight: "700" },
   arrowBtn: { width: 36, height: 36, borderRadius: 18, justifyContent: "center", alignItems: "center", marginLeft: 10 },
   arrowText: { color: "#fff", fontSize: 16, fontWeight: "700" },
+  closedBadge: { marginTop: 8, alignSelf: "flex-start", backgroundColor: "#276749", paddingHorizontal: 12, paddingVertical: 5, borderRadius: 20 },
+  closedBadgeText: { color: "#c6f6d5", fontSize: 13, fontWeight: "700" as const },
+  closeSection: { paddingHorizontal: 16, marginTop: 24 },
+  closeBtn: { backgroundColor: "#c53030", borderRadius: 14, padding: 18, alignItems: "center" as const, shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.15, shadowRadius: 4, elevation: 3 },
+  closeBtnText: { color: "#fff", fontSize: 16, fontWeight: "700" as const, letterSpacing: 0.3 },
+  modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "center" as const, alignItems: "center" as const, padding: 24 },
+  modalCard: { backgroundColor: "#fff", borderRadius: 20, padding: 24, width: "100%" as const, shadowColor: "#000", shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.2, shadowRadius: 16, elevation: 8 },
+  modalTitle: { fontSize: 20, fontWeight: "800" as const, color: "#1a202c", marginBottom: 10 },
+  modalBody: { fontSize: 15, color: "#4a5568", lineHeight: 22, marginBottom: 24 },
+  modalActions: { flexDirection: "row" as const, gap: 12 },
+  modalBtn: { flex: 1, borderRadius: 12, padding: 15, alignItems: "center" as const, justifyContent: "center" as const },
+  modalBtnCancel: { backgroundColor: "#edf2f7" },
+  modalBtnCancelText: { fontSize: 15, fontWeight: "700" as const, color: "#4a5568" },
+  modalBtnConfirm: { backgroundColor: "#c53030" },
+  modalBtnConfirmText: { fontSize: 15, fontWeight: "700" as const, color: "#fff" },
 });
