@@ -31,6 +31,7 @@ patientCasesRouter.get("/", async (c) => {
       billingForms: { select: { id: true, status: true } },
       consentForms: { select: { id: true, status: true } },
       caseStudyForms: { select: { id: true, status: true } },
+      medicalLienForms: { select: { id: true, status: true } },
     },
   });
   return c.json({ data: cases });
@@ -47,6 +48,7 @@ patientCasesRouter.get("/:id", async (c) => {
       billingForms: { select: { id: true, status: true } },
       consentForms: { select: { id: true, status: true } },
       caseStudyForms: { select: { id: true, status: true } },
+      medicalLienForms: { select: { id: true, status: true } },
     },
   });
   if (!patientCase || patientCase.userId !== user.id) {
