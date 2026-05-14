@@ -170,7 +170,6 @@ export default function NewConsentFormScreen() {
     const allAcksChecked = form.ackInformedConsent && form.ackAssignmentRights && form.ackAuthRelease && form.ackSurpriseBalance && form.ackFinancialResp;
     if (!allAcksChecked) {
       setShowAckErrors(true);
-      Alert.alert("Acknowledgment Required", "Please check all acknowledgment boxes in the legal section before submitting.");
       return;
     }
     if (!form.patientGuardianName.trim() || !form.patientSignature.trim()) {
