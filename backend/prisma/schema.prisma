@@ -292,6 +292,7 @@ model CaseStudyForm {
   technicianName       String @default("")
   craniotomyDiagnosis  String @default("")
   selectedProcedures   String @default("[]")
+  procedureOther       String @default("")
   electrodePickupSites String @default("[]")
   electrodeOther       String @default("")
   selectedEPNerves     String @default("[]")

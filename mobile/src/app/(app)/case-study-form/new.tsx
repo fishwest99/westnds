@@ -28,6 +28,7 @@ type CaseStudyFormData = {
   technicianName: string;
   craniotomyDiagnosis: string;
   selectedProcedures: string[];
+  procedureOther: string;
   electrodePickupSites: string[];
   electrodeOther: string;
   selectedEPNerves: string[];
@@ -45,6 +46,7 @@ const defaultForm: CaseStudyFormData = {
   technicianName: "",
   craniotomyDiagnosis: "",
   selectedProcedures: [],
+  procedureOther: "",
   electrodePickupSites: [],
   electrodeOther: "",
   selectedEPNerves: [],
@@ -71,6 +73,10 @@ const PROCEDURE_GROUPS = [
   {
     label: "Lumbar",
     items: ["L1", "L2", "L3", "L4", "L5", "S1"],
+  },
+  {
+    label: "Cranial Nerve",
+    items: ["Thyroidectomy", "Parathyroidectomy", "Tympanoplasty", "Parotidectomy"],
   },
 ];
 
@@ -429,6 +435,16 @@ export default function NewCaseStudyFormScreen() {
                 </View>
               </View>
             ))}
+            <View style={[styles.field, { marginTop: 8 }]}>
+              <Text style={styles.chipGroupLabel}>Other (not listed)</Text>
+              <TextInput
+                style={styles.input}
+                value={form.procedureOther}
+                onChangeText={(v) => update("procedureOther", v)}
+                placeholder="Enter procedure if not listed above"
+                testID="procedure-other-input"
+              />
+            </View>
           </View>
 
           {/* Electrode Pickup Sites */}

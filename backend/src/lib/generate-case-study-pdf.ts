@@ -123,6 +123,16 @@ export async function generateCaseStudyFormPdf(form: Record<string, unknown>): P
       checkboxRow(["L1", "L2", "L3", "L4", "L5", "S1"], selectedProcedures),
       { text: "", marginBottom: 4 } as Content,
 
+      // Cranial Nerve Procedures
+      {
+        text: "Cranial Nerve Procedures:",
+        bold: true,
+        marginBottom: 2,
+      } as Content,
+      checkboxRow(["Thyroidectomy", "Parathyroidectomy", "Tympanoplasty", "Parotidectomy"], selectedProcedures),
+      { text: "", marginBottom: 2 } as Content,
+      { text: [{ text: "Other Procedure: ", bold: true }, String(form.procedureOther || "")], marginBottom: 4 } as Content,
+
       // Electrode pickup sites
       {
         text: "Electrode pickup site:",
