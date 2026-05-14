@@ -25,6 +25,7 @@ model User {
   roleRequests  RoleRequest[]
   calendarEvents  CalendarEvent[]
   caseStudyForms CaseStudyForm[]
+  cases         PatientCase[]
 }
 
 model Session {
@@ -69,6 +70,8 @@ model ConsentForm {
   id              String   @id @default(cuid())
   userId          String
   user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  caseId          String?
+  case            PatientCase? @relation(fields: [caseId], references: [id], onDelete: SetNull)
   status          String   @default("draft")
 
   // Header
@@ -212,6 +215,8 @@ model BillingForm {
   id        String   @id @default(cuid())
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  caseId    String?
+  case      PatientCase? @relation(fields: [caseId], references: [id], onDelete: SetNull)
   status    String   @default("draft")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -283,6 +288,8 @@ model CaseStudyForm {
   id        String   @id @default(cuid())
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  caseId    String?
+  case      PatientCase? @relation(fields: [caseId], references: [id], onDelete: SetNull)
   status    String   @default("draft")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -301,4 +308,19 @@ model CaseStudyForm {
   diabetic             Boolean @default(false)
   patientHistory       String @default("")
   technicianSignature  String @default("")
+}
+
+model PatientCase {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  patientName String
+  date        String   @default("")
+  status      String   @default("active")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  billingForms    BillingForm[]
+  consentForms    ConsentForm[]
+  caseStudyForms  CaseStudyForm[]
 }

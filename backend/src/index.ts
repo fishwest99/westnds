@@ -12,6 +12,7 @@ import { onCallRouter } from "./routes/on-call";
 import { roleRequestsRouter } from "./routes/role-requests";
 import { timeOffRouter } from "./routes/time-off";
 import { workEntriesRouter } from "./routes/work-entries";
+import { patientCasesRouter } from "./routes/patient-cases";
 
 const app = new Hono<{
   Variables: {
@@ -72,6 +73,7 @@ app.route("/api/on-call", onCallRouter);
 app.route("/api/role-requests", roleRequestsRouter);
 app.route("/api/time-off", timeOffRouter);
 app.route("/api/work-entries", workEntriesRouter);
+app.route("/api/cases", patientCasesRouter);
 
 const port = Number(process.env.PORT) || 3000;
 
