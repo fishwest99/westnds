@@ -1,13 +1,17 @@
 import "@vibecodeapp/proxy"; // DO NOT REMOVE OTHERWISE VIBECODE PROXY WILL NOT WORK
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import "./env";
-import { sampleRouter } from "./routes/sample";
 import { logger } from "hono/logger";
+import { auth } from "./auth";
+import { consentFormRouter } from "./routes/consent-forms";
 
-const app = new Hono();
+const app = new Hono<{
+  Variables: {
+    user: typeof auth.$Infer.Session.user | null;
+    session: typeof auth.$Infer.Session.session | null;
+  };
+}>();
 
-// CORS middleware - validates origin against allowlist
 const allowed = [
   /^http:\/\/localhost(:\d+)?$/,
   /^http:\/\/127\.0\.0\.1(:\d+)?$/,
@@ -26,14 +30,24 @@ app.use(
   })
 );
 
-// Logging
 app.use("*", logger());
 
-// Health check endpoint
-app.get("/health", (c) => c.json({ status: "ok" }));
+app.use("*", async (c, next) => {
+  const session = await auth.api.getSession({ headers: c.req.raw.headers });
+  if (!session) {
+    c.set("user", null);
+    c.set("session", null);
+    await next();
+    return;
+  }
+  c.set("user", session.user);
+  c.set("session", session.session);
+  await next();
+});
 
-// Routes
-app.route("/api/sample", sampleRouter);
+app.get("/health", (c) => c.json({ status: "ok" }));
+app.on(["GET", "POST"], "/api/auth/*", (c) => auth.handler(c.req.raw));
+app.route("/api/consent-forms", consentFormRouter);
 
 const port = Number(process.env.PORT) || 3000;
 

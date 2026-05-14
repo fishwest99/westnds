@@ -1,0 +1,136 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String         @id
+  name          String
+  email         String         @unique
+  emailVerified Boolean        @default(false)
+  image         String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  sessions      Session[]
+  accounts      Account[]
+  consentForms  ConsentForm[]
+}
+
+model Session {
+  id        String   @id
+  expiresAt DateTime
+  token     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model ConsentForm {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status          String   @default("draft")
+
+  // Header
+  companyReading    Boolean @default(false)
+  companyServices   Boolean @default(false)
+  patientName       String  @default("")
+  dateOfBirth       String  @default("")
+  dateOfService     String  @default("")
+  surgeonName       String  @default("")
+  procedure         String  @default("")
+
+  // Modalities
+  modalityABR    Boolean @default(false)
+  modalityTEMG   Boolean @default(false)
+  modalityEEG    Boolean @default(false)
+  modalityTO4NMJ Boolean @default(false)
+  modalityEMG    Boolean @default(false)
+  modalityVEP    Boolean @default(false)
+  modalityNVC    Boolean @default(false)
+  modalitySSEP   Boolean @default(false)
+  modalityTcMEP  Boolean @default(false)
+
+  // TcMEP Concerns
+  tcmepNone         Boolean @default(false)
+  tcmepSeizures     Boolean @default(false)
+  tcmepSkullDefects Boolean @default(false)
+  tcmepDefibrillator Boolean @default(false)
+  tcmepOtherText    String  @default("")
+  tcmepImplants     Boolean @default(false)
+  tcmepSpinalCord   Boolean @default(false)
+  tcmepDBS          Boolean @default(false)
+  tcmepCochlearImpl Boolean @default(false)
+
+  // Symptoms
+  symptomAtaxia       Boolean @default(false)
+  symptomHeadaches    Boolean @default(false)
+  symptomPain         Boolean @default(false)
+  symptomVision       Boolean @default(false)
+  symptomBalance      Boolean @default(false)
+  symptomHearing      Boolean @default(false)
+  symptomParalysis    Boolean @default(false)
+  symptomVomiting     Boolean @default(false)
+  symptomBurning      Boolean @default(false)
+  symptomIncontinence Boolean @default(false)
+  symptomSpasticity   Boolean @default(false)
+  symptomWeakness     Boolean @default(false)
+  symptomCognitive    Boolean @default(false)
+  symptomMemory       Boolean @default(false)
+  symptomSpeech       Boolean @default(false)
+  symptomNaseau       Boolean @default(false)
+  symptomStroke       Boolean @default(false)
+  symptomDizziness    Boolean @default(false)
+  symptomNumbness     Boolean @default(false)
+  symptomTingling     Boolean @default(false)
+
+  // Other Medical History
+  otherMedicalHistory String @default("")
+
+  // Patient Signature
+  patientGuardianName     String @default("")
+  patientSignature        String @default("")
+  patientSignatureDate    String @default("")
+
+  // Technician fields (filled by staff)
+  technicianName      String @default("")
+  technicianSignature String @default("")
+  technicianDate      String @default("")
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  submittedAt DateTime?
+}
