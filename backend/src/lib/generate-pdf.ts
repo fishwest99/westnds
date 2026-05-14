@@ -85,6 +85,7 @@ export async function generateConsentFormPdf(form: Record<string, unknown>): Pro
               { text: `${check(form.modalityEMG as boolean)} EMG    ${check(form.modalityVEP as boolean)} VEP` },
               { text: `${check(form.modalityNVC as boolean)} NVC    ${check(form.modalitySSEP as boolean)} SSEP` },
               { text: `${check(form.modalityTcMEP as boolean)} TcMEP` },
+              form.modalityOtherText ? { text: `${check(true)} Other: ${form.modalityOtherText as string}` } : { text: `${check(false)} Other` },
             ],
           },
           {

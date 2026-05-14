@@ -83,6 +83,7 @@ model ConsentForm {
   modalityNVC    Boolean @default(false)
   modalitySSEP   Boolean @default(false)
   modalityTcMEP  Boolean @default(false)
+  modalityOtherText String  @default("")
 
   // TcMEP Concerns
   tcmepNone         Boolean @default(false)

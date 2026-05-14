@@ -29,6 +29,7 @@ type ConsentFormData = {
   modalityNVC: boolean;
   modalitySSEP: boolean;
   modalityTcMEP: boolean;
+  modalityOtherText: string;
   tcmepNone: boolean;
   tcmepSeizures: boolean;
   tcmepSkullDefects: boolean;
@@ -70,6 +71,7 @@ const defaultForm: ConsentFormData = {
   patientName: "", dateOfBirth: "", dateOfService: "", surgeonName: "", procedure: "",
   modalityABR: false, modalityTEMG: false, modalityEEG: false, modalityTO4NMJ: false,
   modalityEMG: false, modalityVEP: false, modalityNVC: false, modalitySSEP: false, modalityTcMEP: false,
+  modalityOtherText: "",
   tcmepNone: false, tcmepSeizures: false, tcmepSkullDefects: false, tcmepDefibrillator: false,
   tcmepOtherText: "", tcmepImplants: false, tcmepSpinalCord: false, tcmepDBS: false, tcmepCochlearImpl: false,
   symptomAtaxia: false, symptomHeadaches: false, symptomPain: false, symptomVision: false,
@@ -313,6 +315,22 @@ export default function ConsentFormScreen() {
               <Checkbox label={label} value={form[key] as boolean} onChange={(v) => update(key, v)} />
             </View>
           ))}
+          <View style={styles.checkCell}>
+            <Checkbox
+              label="Other"
+              value={!!form.modalityOtherText}
+              onChange={(v) => { if (!v) update("modalityOtherText", ""); }}
+            />
+          </View>
+        </View>
+        <View style={styles.field}>
+          <Text style={styles.fieldLabel}>Other Modality</Text>
+          <TextInput
+            style={styles.input}
+            value={form.modalityOtherText}
+            onChangeText={(v) => update("modalityOtherText", v)}
+            placeholder="Specify other modality"
+          />
         </View>
       </View>
 
