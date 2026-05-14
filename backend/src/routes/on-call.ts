@@ -9,6 +9,62 @@ const onCallRouter = new Hono<{
   };
 }>();
 
+// GET /api/on-call/rotation — get the singleton rotation config
+onCallRouter.get("/rotation", async (c) => {
+  const user = c.get("user");
+  if (!user) return c.json({ error: { message: "Unauthorized" } }, 401);
+
+  const record = await prisma.onCallRotation.findUnique({ where: { id: "singleton" } });
+  if (!record) {
+    return c.json({ data: { names: [] as string[], startDate: "" } });
+  }
+
+  let names: string[] = [];
+  try {
+    const parsed = JSON.parse(record.names);
+    if (Array.isArray(parsed)) names = parsed as string[];
+  } catch {
+    names = [];
+  }
+
+  return c.json({ data: { names, startDate: record.startDate } });
+});
+
+// PUT /api/on-call/rotation — upsert the singleton rotation config (managers only)
+onCallRouter.put("/rotation", async (c) => {
+  const user = c.get("user");
+  if (!user) return c.json({ error: { message: "Unauthorized" } }, 401);
+
+  const dbUser = await prisma.user.findUnique({ where: { id: user.id } });
+  if (!dbUser?.isManager) {
+    return c.json({ error: { message: "Forbidden: managers only" } }, 403);
+  }
+
+  const body = await c.req.json().catch(() => ({}));
+
+  if (!Array.isArray(body.names) || !body.names.every((n: unknown) => typeof n === "string")) {
+    return c.json({ error: { message: "names must be an array of strings" } }, 400);
+  }
+  const names = body.names as string[];
+
+  if (typeof body.startDate !== "string" || body.startDate.trim() === "") {
+    return c.json({ error: { message: "startDate must be a non-empty string" } }, 400);
+  }
+  const startDateRegex = /^\d{4}-\d{2}-\d{2}$/;
+  if (!startDateRegex.test(body.startDate.trim())) {
+    return c.json({ error: { message: "startDate must be in YYYY-MM-DD format" } }, 400);
+  }
+  const startDate = body.startDate.trim() as string;
+
+  await prisma.onCallRotation.upsert({
+    where: { id: "singleton" },
+    create: { id: "singleton", names: JSON.stringify(names), startDate },
+    update: { names: JSON.stringify(names), startDate },
+  });
+
+  return c.json({ data: { names, startDate } });
+});
+
 // GET /api/on-call — list all on-call entries
 onCallRouter.get("/", async (c) => {
   const user = c.get("user");

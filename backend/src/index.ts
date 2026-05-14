@@ -1,4 +1,5 @@
 import "@vibecodeapp/proxy"; // DO NOT REMOVE OTHERWISE VIBECODE PROXY WILL NOT WORK
+// on-call rotation singleton support added
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";

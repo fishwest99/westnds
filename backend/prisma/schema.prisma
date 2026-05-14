@@ -369,6 +369,13 @@ model MissedHoursRequest {
   updatedAt      DateTime @updatedAt
 }
 
+model OnCallRotation {
+  id        String   @id @default("singleton")
+  names     String   @default("[]")   // JSON array: ["Alice", "Bob", "Charlie"]
+  startDate String   @default("")     // YYYY-MM-DD of the Monday the first tech's rotation begins
+  updatedAt DateTime @updatedAt
+}
+
 model PatientCase {
   id          String   @id @default(cuid())
   userId      String
