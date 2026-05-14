@@ -115,6 +115,12 @@ function ModalityRow({ label, cptCode, value, onChange }: {
   );
 }
 
+function formatMilitaryTime(val: string): string {
+  const digits = val.replace(/\D/g, "").slice(0, 4);
+  if (digits.length <= 2) return digits;
+  return `${digits.slice(0, 2)}:${digits.slice(2)}`;
+}
+
 function calcHours(start: string, end: string): string | null {
   const parse = (t: string) => {
     const m = t.trim().match(/^(\d{1,2}):(\d{2})$/);
@@ -565,21 +571,25 @@ export default function NewBillingFormScreen() {
             <Text style={styles.sectionTitle}>Timing & Equipment</Text>
             <View style={styles.row}>
               <View style={[styles.field, { flex: 1, marginRight: 8 }]}>
-                <Text style={styles.fieldLabel}>Start Time</Text>
+                <Text style={styles.fieldLabel}>Start Time (Military)</Text>
                 <TextInput
                   style={styles.input}
                   value={form.startTime}
-                  onChangeText={(v) => update("startTime", v)}
-                  placeholder="HH:MM"
+                  onChangeText={(v) => update("startTime", formatMilitaryTime(v))}
+                  placeholder="14:30"
+                  keyboardType="numeric"
+                  maxLength={5}
                 />
               </View>
               <View style={[styles.field, { flex: 1 }]}>
-                <Text style={styles.fieldLabel}>End Time</Text>
+                <Text style={styles.fieldLabel}>End Time (Military)</Text>
                 <TextInput
                   style={styles.input}
                   value={form.endTime}
-                  onChangeText={(v) => update("endTime", v)}
-                  placeholder="HH:MM"
+                  onChangeText={(v) => update("endTime", formatMilitaryTime(v))}
+                  placeholder="16:00"
+                  keyboardType="numeric"
+                  maxLength={5}
                 />
               </View>
             </View>
