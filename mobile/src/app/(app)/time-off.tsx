@@ -23,6 +23,13 @@ type TimeOffRequest = {
 
 type UserProfile = { isManager: boolean };
 
+const fmtDate = (d: string) => {
+  if (!d) return d;
+  if (d.includes('/')) return d;
+  const [y, m, day] = d.split('-');
+  return `${m}/${day}/${y}`;
+};
+
 export default function TimeOffScreen() {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -141,7 +148,7 @@ export default function TimeOffScreen() {
                 <View style={styles.cardTop}>
                   <View>
                     <Text style={styles.cardName}>{item.userName}</Text>
-                    <Text style={styles.cardDates}>{item.startDate} — {item.endDate}</Text>
+                    <Text style={styles.cardDates}>{fmtDate(item.startDate)} — {fmtDate(item.endDate)}</Text>
                   </View>
                   <View style={[styles.badge, { backgroundColor: colors.bg }]}>
                     <Text style={[styles.badgeText, { color: colors.text }]}>

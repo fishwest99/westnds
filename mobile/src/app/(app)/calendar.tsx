@@ -140,6 +140,13 @@ const MONTH_NAMES = [
 
 const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
+const fmtDate = (d: string) => {
+  if (!d) return d;
+  if (d.includes('/')) return d;
+  const [y, m, day] = d.split('-');
+  return `${m}/${day}/${y}`;
+};
+
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
 export default function CalendarScreen() {
@@ -382,7 +389,7 @@ export default function CalendarScreen() {
         ) : null}
         <View style={styles.gcalFooter}>
           {!selectedDate ? (
-            <Text style={styles.gcalTime}>{ev.date}</Text>
+            <Text style={styles.gcalTime}>{fmtDate(ev.date)}</Text>
           ) : (
             <View />
           )}
@@ -555,7 +562,7 @@ export default function CalendarScreen() {
                   ) : null}
 
                   {!selectedDate ? (
-                    <Text style={styles.eventDateLabel}>{ev.date}</Text>
+                    <Text style={styles.eventDateLabel}>{fmtDate(ev.date)}</Text>
                   ) : null}
 
                   <Text style={styles.eventAddedBy}>Added by {ev.createdByName}</Text>

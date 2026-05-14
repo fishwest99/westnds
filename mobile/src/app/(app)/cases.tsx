@@ -23,6 +23,13 @@ function formStatusDot(forms: FormSummary[]): { symbol: string; color: string } 
   return { symbol: "●", color: "#d69e2e" };
 }
 
+const fmtDate = (d: string) => {
+  if (!d) return d;
+  if (d.includes('/')) return d;
+  const [y, m, day] = d.split('-');
+  return `${m}/${day}/${y}`;
+};
+
 export default function CasesScreen() {
   const router = useRouter();
   const { data, isLoading, refetch, isRefetching } = useQuery({
@@ -75,7 +82,7 @@ export default function CasesScreen() {
                   <Text style={styles.patientName}>{item.patientName || "Unnamed Patient"}</Text>
                   <Text style={styles.createdAt}>{createdDate}</Text>
                 </View>
-                {item.date ? <Text style={styles.dateText}>{item.date}</Text> : null}
+                {item.date ? <Text style={styles.dateText}>{fmtDate(item.date)}</Text> : null}
                 <View style={styles.formDots}>
                   <View style={styles.dotItem}>
                     <Text style={[styles.dotSymbol, { color: consent.color }]}>{consent.symbol}</Text>

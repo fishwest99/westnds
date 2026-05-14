@@ -83,6 +83,13 @@ function computeSchedule(names: string[], startDate: string): ScheduleWeek[] {
   return weeks;
 }
 
+const fmtDate = (d: string) => {
+  if (!d) return d;
+  if (d.includes('/')) return d;
+  const [y, m, day] = d.split('-');
+  return `${m}/${day}/${y}`;
+};
+
 // ─── Main Screen ─────────────────────────────────────────────────────────────
 
 export default function OnCallScreen() {
@@ -177,7 +184,7 @@ export default function OnCallScreen() {
                   <Text style={styles.bannerEmpty}>No rotation configured</Text>
                 ) : (
                   <Text style={styles.bannerEmpty}>
-                    Schedule starts {startDate}
+                    Schedule starts {fmtDate(startDate)}
                   </Text>
                 )}
               </View>

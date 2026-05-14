@@ -118,6 +118,13 @@ const EMPTY_REQUEST_FORM = {
   reason: "",
 };
 
+const fmtDate = (d: string) => {
+  if (!d) return d;
+  if (d.includes('/')) return d;
+  const [y, m, day] = d.split('-');
+  return `${m}/${day}/${y}`;
+};
+
 const OWNER_EMAIL = "west_nds@yahoo.com";
 
 export default function TimeTrackingScreen() {
@@ -477,7 +484,7 @@ export default function TimeTrackingScreen() {
                           <Text style={styles.subEntryFacility}>{entry.facilityName}</Text>
                           <Text style={styles.subEntryHours}>{formatMinutes(worked)}</Text>
                         </View>
-                        <Text style={styles.subEntryDate}>{entry.date}</Text>
+                        <Text style={styles.subEntryDate}>{fmtDate(entry.date)}</Text>
                         <Text style={styles.subEntryTime}>
                           {entry.startTime} – {entry.endTime}
                         </Text>
@@ -551,7 +558,7 @@ export default function TimeTrackingScreen() {
               <Text style={requestStyles.facility}>{item.facilityName}</Text>
 
               <View style={requestStyles.metaRow}>
-                <Text style={requestStyles.metaText}>{item.date}</Text>
+                <Text style={requestStyles.metaText}>{fmtDate(item.date)}</Text>
                 <Text style={requestStyles.metaDot}>·</Text>
                 <Text style={requestStyles.metaText}>{item.startTime} – {item.endTime}</Text>
                 <Text style={requestStyles.metaDot}>·</Text>
@@ -697,7 +704,7 @@ export default function TimeTrackingScreen() {
                 <Text style={styles.cardFacility}>{item.facilityName}</Text>
                 <Text style={styles.cardWorked}>{formatMinutes(worked)}</Text>
               </View>
-              <Text style={styles.cardDate}>{item.date}</Text>
+              <Text style={styles.cardDate}>{fmtDate(item.date)}</Text>
               <View style={styles.cardBottom}>
                 <Text style={styles.cardTime}>
                   {item.startTime} – {item.endTime}
@@ -784,7 +791,7 @@ export default function TimeTrackingScreen() {
                         </View>
                       </View>
                       <View style={requestStyles.metaRow}>
-                        <Text style={requestStyles.metaText}>{req.date}</Text>
+                        <Text style={requestStyles.metaText}>{fmtDate(req.date)}</Text>
                         <Text style={requestStyles.metaDot}>·</Text>
                         <Text style={requestStyles.metaText}>{req.startTime} – {req.endTime}</Text>
                         <Text style={requestStyles.metaDot}>·</Text>
