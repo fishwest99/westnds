@@ -135,6 +135,7 @@ export default function HomeScreen() {
         const result = await api.post<{ isManager: boolean }>("/api/time-off/toggle-manager", {});
         const status = result?.isManager ? "Manager" : "Technician";
         queryClient.invalidateQueries({ queryKey: ["session"] });
+        queryClient.invalidateQueries({ queryKey: ["user-profile"] });
         console.log(`Role toggled: now ${status}`);
       } catch (e) {
         console.error("Toggle manager failed", e);
