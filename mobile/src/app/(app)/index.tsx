@@ -16,6 +16,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 type OnCallEntry = { id: string; techName: string; date: string; notes: string };
 
+const OWNER_EMAIL = "west_nds@yahoo.com";
+
 const toDateStr = (d: Date) => d.toISOString().split("T")[0];
 
 const getWeekRange = () => {
@@ -102,6 +104,9 @@ export default function HomeScreen() {
   const logoTapCount = useRef(0);
   const logoTapTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const userEmail = session?.user?.email ?? "";
+  const isOwner = userEmail === OWNER_EMAIL;
+
   const handleSignOut = async () => {
     await authClient.signOut();
     await invalidateSession();
@@ -121,7 +126,6 @@ export default function HomeScreen() {
         const result = await api.post<{ isManager: boolean }>("/api/time-off/toggle-manager", {});
         const status = result?.isManager ? "Manager" : "Technician";
         queryClient.invalidateQueries({ queryKey: ["session"] });
-        // Show status feedback via a brief console message (visible in logs)
         console.log(`Role toggled: now ${status}`);
       } catch (e) {
         console.error("Toggle manager failed", e);
@@ -137,6 +141,14 @@ export default function HomeScreen() {
     queryFn: () => api.get<OnCallEntry[]>("/api/on-call"),
     staleTime: 1000 * 60 * 5,
   });
+
+  const { data: roleRequests } = useQuery({
+    queryKey: ["role-requests"],
+    queryFn: () => api.get<{ id: string; userName: string; requestedRole: string }[]>("/api/role-requests"),
+    enabled: isOwner,
+    staleTime: 1000 * 60 * 2,
+  });
+  const pendingRoleCount = roleRequests?.length ?? 0;
 
   const { monday, sunday } = getWeekRange();
   const monStr = toDateStr(monday);
@@ -193,6 +205,28 @@ export default function HomeScreen() {
               </View>
             </View>
             <Text style={styles.onCallArrow}>→</Text>
+          </Pressable>
+        ) : null}
+
+        {/* Role Requests Banner (owner only) */}
+        {isOwner && pendingRoleCount > 0 ? (
+          <Pressable
+            style={({ pressed }) => [styles.roleRequestBanner, pressed && { opacity: 0.9 }]}
+            onPress={() => router.push("/role-requests")}
+            testID="role-requests-banner"
+          >
+            <View style={styles.roleRequestLeft}>
+              <View style={styles.roleRequestIconWrap}>
+                <Text style={styles.roleRequestIcon}>👤</Text>
+              </View>
+              <View>
+                <Text style={styles.roleRequestTitle}>
+                  {pendingRoleCount} Pending Role {pendingRoleCount === 1 ? "Request" : "Requests"}
+                </Text>
+                <Text style={styles.roleRequestSub}>Tap to review and approve</Text>
+              </View>
+            </View>
+            <Text style={styles.roleRequestArrow}>→</Text>
           </Pressable>
         ) : null}
 
@@ -386,4 +420,35 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     marginLeft: 8,
   },
+
+  roleRequestBanner: {
+    marginHorizontal: 16,
+    marginBottom: 16,
+    backgroundColor: "#2b6cb0",
+    borderRadius: 16,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    shadowColor: "#2b6cb0",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  roleRequestLeft: { flexDirection: "row", alignItems: "center", flex: 1 },
+  roleRequestIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 12,
+  },
+  roleRequestIcon: { fontSize: 20 },
+  roleRequestTitle: { fontSize: 15, fontWeight: "700", color: "#fff", marginBottom: 2 },
+  roleRequestSub: { fontSize: 12, color: "rgba(255,255,255,0.85)", fontWeight: "500" },
+  roleRequestArrow: { color: "#fff", fontSize: 18, fontWeight: "700", marginLeft: 8 },
 });

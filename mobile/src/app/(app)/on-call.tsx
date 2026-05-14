@@ -24,6 +24,12 @@ export default function OnCallScreen() {
   const [editName, setEditName] = useState("");
   const [editNotes, setEditNotes] = useState("");
 
+  const { data: profile } = useQuery({
+    queryKey: ["user-profile"],
+    queryFn: () => api.get<{ isManager: boolean }>("/api/time-off/my-profile"),
+  });
+  const isManager = profile?.isManager ?? false;
+
   const { data, isLoading, refetch, isRefetching } = useQuery({
     queryKey: ["on-call"],
     queryFn: () => api.get<OnCallEntry[]>("/api/on-call"),
@@ -67,9 +73,13 @@ export default function OnCallScreen() {
           <Text style={styles.backText}>← Home</Text>
         </Pressable>
         <Text style={styles.headerTitle}>On-Call Schedule</Text>
-        <Pressable onPress={openAdd} style={styles.addBtn} testID="add-entry-button">
-          <Text style={styles.addBtnText}>+ Add</Text>
-        </Pressable>
+        {isManager ? (
+          <Pressable onPress={openAdd} style={styles.addBtn} testID="add-entry-button">
+            <Text style={styles.addBtnText}>+ Add</Text>
+          </Pressable>
+        ) : (
+          <View style={{ width: 60 }} />
+        )}
       </View>
 
       {isLoading ? (
@@ -106,13 +116,15 @@ export default function OnCallScreen() {
                 <Text style={styles.techName}>{item.techName}</Text>
                 {item.notes ? <Text style={styles.notes}>{item.notes}</Text> : null}
               </View>
-              <Pressable
-                onPress={() => deleteMutation.mutate(item.id)}
-                style={styles.deleteBtn}
-                testID={`delete-entry-${item.id}`}
-              >
-                <Text style={styles.deleteBtnText}>✕</Text>
-              </Pressable>
+              {isManager ? (
+                <Pressable
+                  onPress={() => deleteMutation.mutate(item.id)}
+                  style={styles.deleteBtn}
+                  testID={`delete-entry-${item.id}`}
+                >
+                  <Text style={styles.deleteBtnText}>✕</Text>
+                </Pressable>
+              ) : null}
             </View>
           )}
         />

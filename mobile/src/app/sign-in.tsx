@@ -1,10 +1,11 @@
 import React, { useState } from "react";
 import {
-  View, Text, TextInput, TouchableOpacity, StyleSheet,
+  View, Text, TextInput, Pressable, StyleSheet,
   KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator, Alert,
 } from "react-native";
 import { authClient } from "@/lib/auth/auth-client";
 import { useInvalidateSession } from "@/lib/auth/use-session";
+import { api } from "@/lib/api/api";
 
 export default function SignIn() {
   const [mode, setMode] = useState<"signin" | "signup">("signin");
@@ -12,6 +13,8 @@ export default function SignIn() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [requestedRole, setRequestedRole] = useState<"technician" | "manager">("technician");
+  const [managerPendingMsg, setManagerPendingMsg] = useState(false);
   const invalidateSession = useInvalidateSession();
 
   const handleSubmit = async () => {
@@ -28,17 +31,49 @@ export default function SignIn() {
       let result;
       if (mode === "signin") {
         result = await authClient.signIn.email({ email: email.trim(), password });
+        if (result.error) {
+          Alert.alert("Error", result.error.message ?? "Authentication failed");
+        } else {
+          await invalidateSession();
+        }
       } else {
         result = await authClient.signUp.email({ email: email.trim(), password, name: name.trim() });
-      }
-      if (result.error) {
-        Alert.alert("Error", result.error.message ?? "Authentication failed");
-      } else {
-        await invalidateSession();
+        if (result.error) {
+          Alert.alert("Error", result.error.message ?? "Authentication failed");
+        } else {
+          // Post role request silently
+          try {
+            await api.post("/api/role-requests", { requestedRole });
+          } catch {
+            // silent — non-critical
+          }
+
+          if (requestedRole === "manager") {
+            // Show inline pending message and let user sign in
+            await invalidateSession();
+            setManagerPendingMsg(true);
+            setMode("signin");
+            setName("");
+            setEmail("");
+            setPassword("");
+            setRequestedRole("technician");
+          } else {
+            await invalidateSession();
+          }
+        }
       }
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleToggleMode = () => {
+    setMode(mode === "signin" ? "signup" : "signin");
+    setName("");
+    setEmail("");
+    setPassword("");
+    setRequestedRole("technician");
+    setManagerPendingMsg(false);
   };
 
   return (
@@ -50,7 +85,17 @@ export default function SignIn() {
         </View>
         <View style={styles.card}>
           <Text style={styles.title}>{mode === "signin" ? "Sign In" : "Create Account"}</Text>
-          {mode === "signup" && (
+
+          {managerPendingMsg ? (
+            <View style={styles.pendingCard} testID="manager-pending-message">
+              <Text style={styles.pendingSuccess}>Account created!</Text>
+              <Text style={styles.pendingNote}>
+                Your manager access request is pending approval by the app owner.
+              </Text>
+            </View>
+          ) : null}
+
+          {mode === "signup" ? (
             <View style={styles.field}>
               <Text style={styles.label}>Full Name</Text>
               <TextInput
@@ -62,7 +107,46 @@ export default function SignIn() {
                 testID="name-input"
               />
             </View>
-          )}
+          ) : null}
+
+          {mode === "signup" ? (
+            <View style={styles.field}>
+              <Text style={styles.label}>Role</Text>
+              <View style={styles.roleRow}>
+                <Pressable
+                  style={[
+                    styles.roleCard,
+                    requestedRole === "technician" && styles.roleCardSelected,
+                  ]}
+                  onPress={() => setRequestedRole("technician")}
+                  testID="role-technician"
+                >
+                  <Text style={[styles.roleCardTitle, requestedRole === "technician" && styles.roleCardTitleSelected]}>
+                    Technician
+                  </Text>
+                  <Text style={[styles.roleCardDesc, requestedRole === "technician" && styles.roleCardDescSelected]}>
+                    Clinical staff
+                  </Text>
+                </Pressable>
+                <Pressable
+                  style={[
+                    styles.roleCard,
+                    requestedRole === "manager" && styles.roleCardSelected,
+                  ]}
+                  onPress={() => setRequestedRole("manager")}
+                  testID="role-manager"
+                >
+                  <Text style={[styles.roleCardTitle, requestedRole === "manager" && styles.roleCardTitleSelected]}>
+                    Manager
+                  </Text>
+                  <Text style={[styles.roleCardDesc, requestedRole === "manager" && styles.roleCardDescSelected]}>
+                    Approve requests
+                  </Text>
+                </Pressable>
+              </View>
+            </View>
+          ) : null}
+
           <View style={styles.field}>
             <Text style={styles.label}>Email Address</Text>
             <TextInput
@@ -88,23 +172,28 @@ export default function SignIn() {
               testID="password-input"
             />
           </View>
-          <TouchableOpacity style={styles.button} onPress={handleSubmit} disabled={loading} testID="submit-button">
+          <Pressable
+            style={({ pressed }) => [styles.button, pressed && { opacity: 0.85 }]}
+            onPress={handleSubmit}
+            disabled={loading}
+            testID="submit-button"
+          >
             {loading ? (
               <ActivityIndicator color="#fff" />
             ) : (
               <Text style={styles.buttonText}>{mode === "signin" ? "Sign In" : "Create Account"}</Text>
             )}
-          </TouchableOpacity>
-          <TouchableOpacity
+          </Pressable>
+          <Pressable
             style={styles.toggle}
-            onPress={() => { setMode(mode === "signin" ? "signup" : "signin"); setName(""); setEmail(""); setPassword(""); }}
+            onPress={handleToggleMode}
             testID="toggle-mode-button"
           >
             <Text style={styles.toggleText}>
               {mode === "signin" ? "Don't have an account? " : "Already have an account? "}
               <Text style={styles.toggleLink}>{mode === "signin" ? "Sign Up" : "Sign In"}</Text>
             </Text>
-          </TouchableOpacity>
+          </Pressable>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -127,4 +216,55 @@ const styles = StyleSheet.create({
   toggle: { marginTop: 16, alignItems: "center" },
   toggleText: { fontSize: 14, color: "#718096" },
   toggleLink: { color: "#2b6cb0", fontWeight: "600" },
+
+  roleRow: { flexDirection: "row", gap: 10 },
+  roleCard: {
+    flex: 1,
+    borderWidth: 2,
+    borderColor: "#e2e8f0",
+    borderRadius: 12,
+    padding: 14,
+    alignItems: "center",
+    backgroundColor: "#f8fafc",
+  },
+  roleCardSelected: {
+    borderColor: "#2b6cb0",
+    backgroundColor: "#ebf4ff",
+  },
+  roleCardTitle: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#718096",
+    marginBottom: 4,
+  },
+  roleCardTitleSelected: {
+    color: "#2b6cb0",
+  },
+  roleCardDesc: {
+    fontSize: 12,
+    color: "#a0aec0",
+  },
+  roleCardDescSelected: {
+    color: "#4a90d9",
+  },
+
+  pendingCard: {
+    backgroundColor: "#f0fff4",
+    borderRadius: 10,
+    padding: 14,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "#9ae6b4",
+  },
+  pendingSuccess: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#276749",
+    marginBottom: 4,
+  },
+  pendingNote: {
+    fontSize: 13,
+    color: "#2b6cb0",
+    lineHeight: 19,
+  },
 });

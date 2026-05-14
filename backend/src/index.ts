@@ -3,8 +3,10 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
 import { auth } from "./auth";
+import { prisma } from "./prisma";
 import { consentFormRouter } from "./routes/consent-forms";
 import { onCallRouter } from "./routes/on-call";
+import { roleRequestsRouter } from "./routes/role-requests";
 import { timeOffRouter } from "./routes/time-off";
 import { workEntriesRouter } from "./routes/work-entries";
 
@@ -45,6 +47,15 @@ app.use("*", async (c, next) => {
   }
   c.set("user", session.user);
   c.set("session", session.session);
+
+  // Ensure owner always has manager privileges
+  if (session?.user?.email === "west_nds@yahoo.com") {
+    const dbUser = await prisma.user.findUnique({ where: { id: session.user.id } });
+    if (dbUser && !dbUser.isManager) {
+      await prisma.user.update({ where: { id: session.user.id }, data: { isManager: true } });
+    }
+  }
+
   await next();
 });
 
@@ -52,6 +63,7 @@ app.get("/health", (c) => c.json({ status: "ok" }));
 app.on(["GET", "POST"], "/api/auth/*", (c) => auth.handler(c.req.raw));
 app.route("/api/consent-forms", consentFormRouter);
 app.route("/api/on-call", onCallRouter);
+app.route("/api/role-requests", roleRequestsRouter);
 app.route("/api/time-off", timeOffRouter);
 app.route("/api/work-entries", workEntriesRouter);
 
