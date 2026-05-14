@@ -194,10 +194,19 @@ export default function NewBillingFormScreen() {
     saveForm(updated);
   };
 
+  const needleMismatch =
+    form.needlesUsed.trim() !== "" &&
+    form.needlesRemoved.trim() !== "" &&
+    form.needlesUsed.trim() !== form.needlesRemoved.trim();
+
   const handleSubmit = async () => {
     if (!formId) return;
     if (!form.patientName.trim() || !form.technicianSignature.trim()) {
       Alert.alert("Required", "Please provide patient name and technician signature before submitting.");
+      return;
+    }
+    if (needleMismatch) {
+      Alert.alert("Needle Count Mismatch", "Needles Used and Needles Removed must match before submitting.");
       return;
     }
     Alert.alert(
@@ -596,7 +605,7 @@ export default function NewBillingFormScreen() {
             </View>
             <View style={styles.row}>
               <View style={[styles.field, { flex: 1, marginRight: 8 }]}>
-                <Text style={styles.fieldLabel}>Electrodes Used</Text>
+                <Text style={styles.fieldLabel}>Electrodes Used (Needle Count)</Text>
                 <TextInput
                   style={styles.input}
                   value={form.electrodesUsed}
@@ -623,7 +632,7 @@ export default function NewBillingFormScreen() {
               <View style={[styles.field, { flex: 1, marginRight: 8 }]}>
                 <Text style={styles.fieldLabel}>Needles Used</Text>
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, needleMismatch ? { borderColor: "#c53030", backgroundColor: "#fff5f5" } : null]}
                   value={form.needlesUsed}
                   onChangeText={(v) => update("needlesUsed", v)}
                   placeholder="Count"
@@ -633,7 +642,7 @@ export default function NewBillingFormScreen() {
               <View style={[styles.field, { flex: 1 }]}>
                 <Text style={styles.fieldLabel}>Needles Removed</Text>
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, needleMismatch ? { borderColor: "#c53030", backgroundColor: "#fff5f5" } : null]}
                   value={form.needlesRemoved}
                   onChangeText={(v) => update("needlesRemoved", v)}
                   placeholder="Count"
@@ -641,6 +650,11 @@ export default function NewBillingFormScreen() {
                 />
               </View>
             </View>
+            {needleMismatch ? (
+              <View style={{ backgroundColor: "#fff5f5", borderWidth: 1, borderColor: "#c53030", borderRadius: 8, padding: 12, marginTop: 8 }}>
+                <Text style={{ color: "#c53030", fontSize: 13, fontWeight: "600" }}>⚠ Needles Used and Needles Removed must match before submitting.</Text>
+              </View>
+            ) : null}
           </View>
 
           {/* Summary */}
@@ -844,4 +858,7 @@ const styles = StyleSheet.create({
   actionButtonText: { color: "#fff", fontSize: 15, fontWeight: "700" },
   newFormButton: { backgroundColor: "#2b6cb0", borderRadius: 12, padding: 16, alignItems: "center", marginTop: 12 },
   newFormButtonText: { color: "#fff", fontSize: 15, fontWeight: "700" },
+  inputError: { borderColor: "#c53030", backgroundColor: "#fff5f5" },
+  needleWarning: { backgroundColor: "#fff5f5", borderWidth: 1, borderColor: "#c53030", borderRadius: 8, padding: 12, marginTop: 8 },
+  needleWarningText: { color: "#c53030", fontSize: 13, fontWeight: "600" as const },
 });
