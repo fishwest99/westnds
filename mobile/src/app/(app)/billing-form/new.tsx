@@ -854,7 +854,7 @@ const styles = StyleSheet.create({
   checkBox: { width: 20, height: 20, borderWidth: 2, borderColor: "#cbd5e0", borderRadius: 4, justifyContent: "center", alignItems: "center", marginRight: 8, backgroundColor: "#fff" },
   checkBoxChecked: { backgroundColor: "#2b6cb0", borderColor: "#2b6cb0" },
   checkMark: { color: "#fff", fontSize: 12, fontWeight: "700" },
-  checkLabel: { fontSize: 13, color: "#2d3748", flex: 1 },
+  checkLabel: { fontSize: 13, color: "#2d3748", flexShrink: 1 },
   modalityHeader: { flexDirection: "row", marginBottom: 6, paddingBottom: 4, borderBottomWidth: 1, borderBottomColor: "#e2e8f0" },
   modalityHeaderText: { fontSize: 11, fontWeight: "700", color: "#718096", textTransform: "uppercase", letterSpacing: 0.4 },
   modalityRow: { flexDirection: "row", alignItems: "center", paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: "#f0f4f8" },
