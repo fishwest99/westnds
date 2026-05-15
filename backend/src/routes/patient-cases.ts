@@ -29,12 +29,17 @@ patientCasesRouter.get("/", async (c) => {
     orderBy: { createdAt: "desc" },
     include: {
       billingForms: { select: { id: true, status: true } },
-      consentForms: { select: { id: true, status: true } },
+      consentForms: { select: { id: true, status: true, surgeonName: true, dateOfService: true } },
       caseStudyForms: { select: { id: true, status: true } },
       medicalLienForms: { select: { id: true, status: true } },
     },
   });
-  return c.json({ data: cases });
+  const withSurgeon = cases.map((c) => {
+    const surgeonName = c.consentForms.find((f) => f.surgeonName && f.surgeonName.trim().length > 0)?.surgeonName ?? "";
+    const dateOfService = c.date || c.consentForms.find((f) => f.dateOfService && f.dateOfService.trim().length > 0)?.dateOfService || "";
+    return { ...c, surgeonName, dateOfService };
+  });
+  return c.json({ data: withSurgeon });
 });
 
 // GET /api/cases/:id — get single case with nested form statuses

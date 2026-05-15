@@ -12,6 +12,8 @@ type PatientCase = {
   date: string;
   status: string;
   createdAt: string;
+  surgeonName?: string;
+  dateOfService?: string;
   billingForms: FormSummary[];
   consentForms: FormSummary[];
   caseStudyForms: FormSummary[];
@@ -46,8 +48,10 @@ export default function CasesScreen() {
     return cases.filter((c) => {
       const name = (c.patientName ?? "").toLowerCase();
       const date = (c.date ?? "").toLowerCase();
+      const dos = (c.dateOfService ?? "").toLowerCase();
+      const surgeon = (c.surgeonName ?? "").toLowerCase();
       const created = new Date(c.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }).toLowerCase();
-      return name.includes(q) || date.includes(q) || created.includes(q);
+      return name.includes(q) || date.includes(q) || dos.includes(q) || surgeon.includes(q) || created.includes(q);
     });
   }, [cases, query]);
 
@@ -67,7 +71,7 @@ export default function CasesScreen() {
           <TextInput
             value={query}
             onChangeText={setQuery}
-            placeholder="Search by patient name or date"
+            placeholder="Search by patient, date of service, or surgeon"
             placeholderTextColor="#a0aec0"
             style={styles.searchInput}
             autoCorrect={false}
@@ -117,6 +121,7 @@ export default function CasesScreen() {
                   <Text style={styles.createdAt}>{createdDate}</Text>
                 </View>
                 {item.date ? <Text style={styles.dateText}>{fmtDate(item.date)}</Text> : null}
+                {item.surgeonName ? <Text style={styles.surgeonText}>Surgeon: {item.surgeonName}</Text> : null}
                 <View style={styles.formDots}>
                   <View style={styles.dotItem}>
                     <Text style={[styles.dotSymbol, { color: consent.color }]}>{consent.symbol}</Text>
@@ -178,7 +183,8 @@ const styles = StyleSheet.create({
   cardTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 4 },
   patientName: { fontSize: 16, fontWeight: "700", color: "#1a365d", flex: 1, marginRight: 8 },
   createdAt: { fontSize: 12, color: "#a0aec0" },
-  dateText: { fontSize: 13, color: "#4a5568", marginBottom: 10 },
+  dateText: { fontSize: 13, color: "#4a5568", marginBottom: 4 },
+  surgeonText: { fontSize: 13, color: "#4a5568", marginBottom: 10 },
   formDots: { flexDirection: "row", alignItems: "center", gap: 16 },
   dotItem: { alignItems: "center", gap: 2 },
   dotSymbol: { fontSize: 16, fontWeight: "700" },
