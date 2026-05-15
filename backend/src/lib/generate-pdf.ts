@@ -2,7 +2,12 @@ import type { TDocumentDefinitions, Content, TFontDictionary } from "pdfmake/int
 
 // pdfmake's @types package only covers the browser API; use a require for server-side PdfPrinter
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const PdfPrinter = require("pdfmake/js/Printer").default as new (fonts: TFontDictionary) => {
+const PdfPrinter = require("pdfmake/js/Printer").default as new (
+  fonts: TFontDictionary,
+  virtualfs?: unknown,
+  urlResolver?: { resolve: (url: string, headers?: Record<string, string>) => string },
+  localAccessPolicy?: (path: string) => boolean,
+) => {
   createPdfKitDocument(docDefinition: TDocumentDefinitions, options?: Record<string, unknown>): NodeJS.EventEmitter & { end(): void };
 };
 
@@ -15,7 +20,8 @@ const fonts: TFontDictionary = {
   },
 };
 
-const printer = new PdfPrinter(fonts);
+const urlResolver = { resolve: (url: string) => url };
+const printer = new PdfPrinter(fonts, undefined, urlResolver);
 
 function check(val: boolean | null | undefined): string {
   return val ? "☑" : "☐";

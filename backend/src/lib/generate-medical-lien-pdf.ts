@@ -1,7 +1,12 @@
 import type { TDocumentDefinitions, Content } from "pdfmake/interfaces";
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const PdfPrinter = require("pdfmake/js/Printer").default as new (fonts: import("pdfmake/interfaces").TFontDictionary) => {
+const PdfPrinter = require("pdfmake/js/Printer").default as new (
+  fonts: import("pdfmake/interfaces").TFontDictionary,
+  virtualfs?: unknown,
+  urlResolver?: { resolve: (url: string, headers?: Record<string, string>) => string },
+  localAccessPolicy?: (path: string) => boolean,
+) => {
   createPdfKitDocument(docDefinition: TDocumentDefinitions, options?: Record<string, unknown>): NodeJS.EventEmitter & { end(): void };
 };
 
@@ -14,7 +19,8 @@ const fonts = {
   },
 };
 
-const printer = new PdfPrinter(fonts);
+const urlResolver = { resolve: (url: string) => url };
+const printer = new PdfPrinter(fonts, undefined, urlResolver);
 
 export async function generateMedicalLienPdf(form: Record<string, unknown>): Promise<Buffer> {
   const f = (key: string): string => String(form[key] ?? "");
