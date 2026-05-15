@@ -558,8 +558,8 @@ export default function NewCaseStudyFormScreen() {
               <Text style={styles.fieldLabel}>Name of Technician *</Text>
               <TextInput
                 style={styles.input}
-                value={form.technicianSignature}
-                onChangeText={(v) => update("technicianSignature", v)}
+                value={form.technicianName}
+                onChangeText={(v) => update("technicianName", v)}
                 placeholder="Technician name for signature"
                 testID="technician-signature-name-input"
               />
