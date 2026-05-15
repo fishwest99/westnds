@@ -1,5 +1,5 @@
-import React from "react";
-import { View, Text, StyleSheet, Pressable, FlatList, ActivityIndicator, RefreshControl } from "react-native";
+import React, { useMemo, useState } from "react";
+import { View, Text, StyleSheet, Pressable, FlatList, ActivityIndicator, RefreshControl, TextInput } from "react-native";
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useQuery } from "@tanstack/react-query";
@@ -38,6 +38,18 @@ export default function CasesScreen() {
   });
 
   const cases = data ?? [];
+  const [query, setQuery] = useState<string>("");
+
+  const filteredCases = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return cases;
+    return cases.filter((c) => {
+      const name = (c.patientName ?? "").toLowerCase();
+      const date = (c.date ?? "").toLowerCase();
+      const created = new Date(c.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }).toLowerCase();
+      return name.includes(q) || date.includes(q) || created.includes(q);
+    });
+  }, [cases, query]);
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]} testID="cases-screen">
@@ -49,6 +61,28 @@ export default function CasesScreen() {
         <View style={styles.headerRight} />
       </View>
 
+      <View style={styles.searchContainer}>
+        <View style={styles.searchBox}>
+          <Text style={styles.searchIcon}>🔍</Text>
+          <TextInput
+            value={query}
+            onChangeText={setQuery}
+            placeholder="Search by patient name or date"
+            placeholderTextColor="#a0aec0"
+            style={styles.searchInput}
+            autoCorrect={false}
+            autoCapitalize="words"
+            returnKeyType="search"
+            testID="patient-search-input"
+          />
+          {query.length > 0 ? (
+            <Pressable onPress={() => setQuery("")} testID="clear-search-button" hitSlop={10}>
+              <Text style={styles.clearIcon}>✕</Text>
+            </Pressable>
+          ) : null}
+        </View>
+      </View>
+
       {isLoading ? (
         <View style={styles.centered} testID="loading-indicator">
           <ActivityIndicator size="large" color="#2b6cb0" />
@@ -56,15 +90,15 @@ export default function CasesScreen() {
         </View>
       ) : (
         <FlatList
-          data={cases}
+          data={filteredCases}
           keyExtractor={(item) => item.id}
-          contentContainerStyle={cases.length === 0 ? styles.emptyContainer : styles.listContent}
+          contentContainerStyle={filteredCases.length === 0 ? styles.emptyContainer : styles.listContent}
           refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor="#2b6cb0" />}
           ListEmptyComponent={
             <View style={styles.emptyState} testID="empty-state">
-              <Text style={styles.emptyIcon}>🏥</Text>
-              <Text style={styles.emptyTitle}>No patient cases yet</Text>
-              <Text style={styles.emptyText}>Start a new case from the home screen.</Text>
+              <Text style={styles.emptyIcon}>{query ? "🔎" : "🏥"}</Text>
+              <Text style={styles.emptyTitle}>{query ? "No matching cases" : "No patient cases yet"}</Text>
+              <Text style={styles.emptyText}>{query ? "Try a different patient name or date." : "Start a new case from the home screen."}</Text>
             </View>
           }
           renderItem={({ item }) => {
@@ -117,6 +151,16 @@ const styles = StyleSheet.create({
   backText: { color: "#90cdf4", fontSize: 15, fontWeight: "600" },
   headerTitle: { flex: 1, color: "#fff", fontSize: 18, fontWeight: "700", textAlign: "center" },
   headerRight: { width: 60 },
+  searchContainer: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4, backgroundColor: "#f0f4f8" },
+  searchBox: {
+    flexDirection: "row", alignItems: "center", backgroundColor: "#fff",
+    borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, gap: 8,
+    shadowColor: "#000", shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05, shadowRadius: 3, elevation: 1,
+  },
+  searchIcon: { fontSize: 15, color: "#718096" },
+  searchInput: { flex: 1, fontSize: 15, color: "#1a365d", padding: 0 },
+  clearIcon: { fontSize: 14, color: "#a0aec0", fontWeight: "700", paddingHorizontal: 4 },
   centered: { flex: 1, justifyContent: "center", alignItems: "center" },
   loadingText: { marginTop: 12, color: "#4a5568", fontSize: 15 },
   listContent: { padding: 16, gap: 12 },
