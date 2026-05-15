@@ -1,11 +1,13 @@
 import React, { useState } from "react";
 import {
-  View, Text, StyleSheet, ScrollView, Pressable, ActivityIndicator, RefreshControl, Modal,
+  View, Text, StyleSheet, ScrollView, Pressable, ActivityIndicator, RefreshControl, Modal, Platform,
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import * as MailComposer from "expo-mail-composer";
 import { api } from "@/lib/api/api";
+import { downloadPdfToFile } from "@/lib/pdf/download-pdf";
 
 type FormSummary = { id: string; status: string };
 type PatientCase = {
@@ -29,6 +31,14 @@ type FormCard = {
   createEndpoint: string;
   viewPath: string;
   extraData: Record<string, unknown>;
+};
+
+type PdfMeta = { endpoint: string; filenamePrefix: string };
+const PDF_ENDPOINTS: Record<FormCard["key"], PdfMeta> = {
+  consentForms: { endpoint: "/api/consent-forms", filenamePrefix: "Consent" },
+  billingForms: { endpoint: "/api/billing-forms", filenamePrefix: "Billing" },
+  caseStudyForms: { endpoint: "/api/case-study-forms", filenamePrefix: "CaseStudy" },
+  medicalLienForms: { endpoint: "/api/medical-lien-forms", filenamePrefix: "MedicalLien" },
 };
 
 const FORM_CARDS: FormCard[] = [
@@ -74,6 +84,10 @@ const FORM_CARDS: FormCard[] = [
   },
 ];
 
+function sanitizeName(s: string): string {
+  return (s || "Patient").replace(/[^a-zA-Z0-9-_]/g, "_").slice(0, 40);
+}
+
 function statusBadge(forms: FormSummary[]): { label: string; color: string; bg: string } {
   if (forms.length === 0) return { label: "Not Started", color: "#718096", bg: "#edf2f7" };
   const latest = forms[0];
@@ -87,6 +101,8 @@ export default function PatientCaseScreen() {
   const queryClient = useQueryClient();
   const [creatingForm, setCreatingForm] = useState<string | null>(null);
   const [showCloseModal, setShowCloseModal] = useState(false);
+  const [sendingPackage, setSendingPackage] = useState<boolean>(false);
+  const [packageMessage, setPackageMessage] = useState<string | null>(null);
 
   const { data, isLoading, refetch, isRefetching } = useQuery({
     queryKey: ["case", id],
@@ -102,6 +118,65 @@ export default function PatientCaseScreen() {
       setShowCloseModal(false);
     },
   });
+
+  const submittedForms = data
+    ? FORM_CARDS.flatMap((card) => {
+        const list = data[card.key];
+        const submitted = list.find((f) => f.status === "submitted");
+        return submitted ? [{ card, formId: submitted.id }] : [];
+      })
+    : [];
+
+  const baseUrl = process.env.EXPO_PUBLIC_BACKEND_URL ?? "";
+
+  const handleSendPackage = async () => {
+    if (!data) return;
+    setPackageMessage(null);
+    if (submittedForms.length === 0) {
+      setPackageMessage("No submitted forms yet. Submit at least one form before sending.");
+      return;
+    }
+    if (Platform.OS !== "web") {
+      const available = await MailComposer.isAvailableAsync();
+      if (!available) {
+        setPackageMessage("Email is not set up on this device. Add a mail account and try again.");
+        return;
+      }
+    }
+    setSendingPackage(true);
+    try {
+      const safeName = sanitizeName(data.patientName);
+      const attachments: string[] = [];
+      for (const { card, formId } of submittedForms) {
+        const meta = PDF_ENDPOINTS[card.key];
+        const filename = `${meta.filenamePrefix}_${safeName}.pdf`;
+        const uri = await downloadPdfToFile({
+          url: `${baseUrl}${meta.endpoint}/${formId}/pdf`,
+          filename,
+        });
+        if (uri) attachments.push(uri);
+      }
+      if (attachments.length === 0) {
+        setPackageMessage("Could not download any PDFs. Please try again.");
+        return;
+      }
+      if (Platform.OS === "web") {
+        setPackageMessage(`Downloaded ${attachments.length} PDF${attachments.length === 1 ? "" : "s"}. On mobile, this opens your email app automatically.`);
+        return;
+      }
+      const labels = submittedForms.map(({ card }) => card.label).join(", ");
+      await MailComposer.composeAsync({
+        subject: `Case Package – ${data.patientName}${data.date ? ` – ${data.date}` : ""}`,
+        body: `Attached: ${labels}.\n\nPatient: ${data.patientName}\nDate of Service: ${data.date || ""}`,
+        attachments,
+      });
+      setPackageMessage(`Email composer opened with ${attachments.length} attachment${attachments.length === 1 ? "" : "s"}.`);
+    } catch {
+      setPackageMessage("Something went wrong preparing the email. Please try again.");
+    } finally {
+      setSendingPackage(false);
+    }
+  };
 
   const handleFormPress = async (card: FormCard) => {
     if (!data) return;
@@ -234,6 +309,36 @@ export default function PatientCaseScreen() {
           </Pressable>
         </View>
 
+        {/* Send Case Package */}
+        <View style={styles.sendSection}>
+          <Pressable
+            style={({ pressed }) => [
+              styles.sendBtn,
+              { opacity: pressed || sendingPackage ? 0.85 : 1 },
+            ]}
+            onPress={handleSendPackage}
+            disabled={sendingPackage}
+            testID="send-case-package-button"
+          >
+            {sendingPackage ? (
+              <ActivityIndicator color="#fff" size="small" />
+            ) : (
+              <Text style={styles.sendBtnText}>
+                📧 Send Case Package
+                {submittedForms.length > 0
+                  ? ` (${submittedForms.length} PDF${submittedForms.length === 1 ? "" : "s"})`
+                  : ""}
+              </Text>
+            )}
+          </Pressable>
+          <Text style={styles.sendHint}>
+            Opens your email app with every submitted form attached.
+          </Text>
+          {packageMessage ? (
+            <Text style={styles.sendMessage} testID="send-case-package-message">{packageMessage}</Text>
+          ) : null}
+        </View>
+
         {/* Close Out Case */}
         {data.status !== "closed" && (
           <View style={styles.closeSection}>
@@ -321,6 +426,11 @@ const styles = StyleSheet.create({
   arrowText: { color: "#fff", fontSize: 16, fontWeight: "700" },
   closedBadge: { marginTop: 8, alignSelf: "flex-start", backgroundColor: "#276749", paddingHorizontal: 12, paddingVertical: 5, borderRadius: 20 },
   closedBadgeText: { color: "#c6f6d5", fontSize: 13, fontWeight: "700" as const },
+  sendSection: { paddingHorizontal: 16, marginTop: 24 },
+  sendBtn: { backgroundColor: "#2b6cb0", borderRadius: 14, padding: 18, alignItems: "center" as const, shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.15, shadowRadius: 4, elevation: 3 },
+  sendBtnText: { color: "#fff", fontSize: 16, fontWeight: "700" as const, letterSpacing: 0.3 },
+  sendHint: { fontSize: 12, color: "#718096", textAlign: "center" as const, marginTop: 8, paddingHorizontal: 8 },
+  sendMessage: { fontSize: 13, color: "#2b6cb0", textAlign: "center" as const, marginTop: 10, fontWeight: "600" as const },
   closeSection: { paddingHorizontal: 16, marginTop: 24 },
   closeBtn: { backgroundColor: "#c53030", borderRadius: 14, padding: 18, alignItems: "center" as const, shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.15, shadowRadius: 4, elevation: 3 },
   closeBtnText: { color: "#fff", fontSize: 16, fontWeight: "700" as const, letterSpacing: 0.3 },
