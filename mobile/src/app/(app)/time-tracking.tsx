@@ -39,20 +39,6 @@ type SummaryData = {
   entries: WorkEntry[];
 };
 
-type StaffMemberSummary = {
-  userId: string;
-  userName: string;
-  totalWorkedMinutes: number;
-  totalTravelMinutes: number;
-  entryCount: number;
-  entries: WorkEntry[];
-};
-
-type StaffOverviewData = {
-  periodLabel: string;
-  staff: StaffMemberSummary[];
-};
-
 type MissedHoursRequest = {
   id: string;
   facilityName: string;
@@ -148,11 +134,8 @@ export default function TimeTrackingScreen() {
 
   const isManager = profile?.isManager ?? isOwner;
 
-  // View toggle state (manager/owner only): "mine" | "staff" | "pending-requests"
-  const [view, setView] = useState<"mine" | "staff" | "pending-requests">("mine");
-
-  // Expanded staff member state
-  const [expandedUserId, setExpandedUserId] = useState<string | null>(null);
+  // View toggle state (manager/owner only): "mine" | "pending-requests"
+  const [view, setView] = useState<"mine" | "pending-requests">("mine");
 
   // Add modal state (manager only)
   const [addVisible, setAddVisible] = useState(false);
@@ -179,21 +162,6 @@ export default function TimeTrackingScreen() {
       api.get<SummaryData>(
         `/api/work-entries/summary?period=${period}&referenceDate=${today}`
       ),
-  });
-
-  // Staff overview query (manager only)
-  const {
-    data: staffOverview,
-    isLoading: staffLoading,
-    refetch: refetchStaff,
-    isRefetching: staffRefetching,
-  } = useQuery({
-    queryKey: ["work-entries-staff", period, today],
-    queryFn: () =>
-      api.get<StaffOverviewData>(
-        `/api/work-entries/staff-overview?period=${period}&referenceDate=${today}`
-      ),
-    enabled: isManager && view === "staff",
   });
 
   // My missed hours requests (technician)
@@ -380,131 +348,6 @@ export default function TimeTrackingScreen() {
     requestForm.startTime.trim().length > 0 &&
     requestForm.endTime.trim().length > 0 &&
     requestForm.reason.trim().length > 0;
-
-  // Computed staff totals
-  const staffList: StaffMemberSummary[] = staffOverview?.staff ?? [];
-  const staffTotalWorked = staffList.reduce((sum, s) => sum + s.totalWorkedMinutes, 0);
-  const staffTotalTravel = staffList.reduce((sum, s) => sum + s.totalTravelMinutes, 0);
-  const staffTotalEntries = staffList.reduce((sum, s) => sum + s.entryCount, 0);
-
-  const renderStaffView = () => {
-    if (staffLoading) {
-      return (
-        <View style={styles.centered} testID="staff-loading-indicator">
-          <ActivityIndicator size="large" color="#2c7a7b" />
-          <Text style={styles.loadingText}>Loading staff hours...</Text>
-        </View>
-      );
-    }
-
-    return (
-      <FlatList
-        data={staffList}
-        keyExtractor={(item) => item.userId}
-        contentContainerStyle={
-          staffList.length === 0 ? styles.emptyContainer : styles.listContent
-        }
-        refreshControl={
-          <RefreshControl
-            refreshing={staffRefetching}
-            onRefresh={refetchStaff}
-            tintColor="#2c7a7b"
-          />
-        }
-        testID="staff-list"
-        ListHeaderComponent={
-          <View style={styles.summaryCard} testID="staff-summary-card">
-            <Text style={styles.summaryPeriodLabel}>
-              {staffOverview?.periodLabel ?? ""}
-            </Text>
-            <Text style={styles.summaryHours}>
-              {formatMinutes(staffTotalWorked)}
-            </Text>
-            <Text style={styles.summaryHoursLabel}>total worked (all staff)</Text>
-            <View style={styles.summaryRow}>
-              <View style={styles.summaryMetric}>
-                <Text style={styles.summaryMetricValue}>
-                  {formatMinutes(staffTotalTravel)}
-                </Text>
-                <Text style={styles.summaryMetricLabel}>Travel</Text>
-              </View>
-              <View style={styles.summaryDivider} />
-              <View style={styles.summaryMetric}>
-                <Text style={styles.summaryMetricValue}>
-                  {staffTotalEntries}
-                </Text>
-                <Text style={styles.summaryMetricLabel}>
-                  {staffTotalEntries === 1 ? "Entry" : "Entries"}
-                </Text>
-              </View>
-            </View>
-          </View>
-        }
-        ListEmptyComponent={
-          <View style={styles.emptyState} testID="staff-empty-state">
-            <Text style={styles.emptyIcon}>📋</Text>
-            <Text style={styles.emptyTitle}>No hours logged this period</Text>
-            <Text style={styles.emptyText}>
-              No staff have logged hours for this period.
-            </Text>
-          </View>
-        }
-        renderItem={({ item }) => {
-          const isExpanded = expandedUserId === item.userId;
-          return (
-            <View style={styles.staffCard} testID={`staff-card-${item.userId}`}>
-              <Pressable
-                onPress={() =>
-                  setExpandedUserId(isExpanded ? null : item.userId)
-                }
-                testID={`staff-card-toggle-${item.userId}`}
-              >
-                <View style={styles.staffCardTop}>
-                  <Text style={styles.staffName}>{item.userName}</Text>
-                  <Text style={styles.staffHours}>
-                    {formatMinutes(item.totalWorkedMinutes)}
-                  </Text>
-                </View>
-                <Text style={styles.staffMeta}>
-                  {item.entryCount} {item.entryCount === 1 ? "entry" : "entries"} · {formatMinutes(item.totalTravelMinutes)} travel
-                </Text>
-                <Text style={styles.staffChevron}>{isExpanded ? "▼" : "▶"}</Text>
-              </Pressable>
-
-              {isExpanded
-                ? item.entries.map((entry) => {
-                    const worked = computeWorkedMinutes(entry.startTime, entry.endTime);
-                    return (
-                      <View
-                        key={entry.id}
-                        style={styles.subEntry}
-                        testID={`sub-entry-${entry.id}`}
-                      >
-                        <View style={styles.subEntryTop}>
-                          <Text style={styles.subEntryFacility}>{entry.facilityName}</Text>
-                          <Text style={styles.subEntryHours}>{formatMinutes(worked)}</Text>
-                        </View>
-                        <Text style={styles.subEntryDate}>{fmtDate(entry.date)}</Text>
-                        <Text style={styles.subEntryTime}>
-                          {entry.startTime} – {entry.endTime}
-                        </Text>
-                        {entry.travelMinutes > 0 ? (
-                          <View style={[styles.travelBadge, { marginTop: 6, alignSelf: "flex-start" }]}>
-                            <Text style={styles.travelBadgeText}>
-                              {formatMinutes(entry.travelMinutes)} travel
-                            </Text>
-                          </View>
-                        ) : null}
-                      </View>
-                    );
-                  })
-                : null}
-            </View>
-          );
-        }}
-      />
-    );
-  };
 
   const renderPendingRequestsView = () => {
     if (pendingRequestsLoading) {
@@ -858,17 +701,6 @@ export default function TimeTrackingScreen() {
             </Text>
           </Pressable>
           <Pressable
-            style={[styles.viewToggleBtn, view === "staff" && styles.viewToggleBtnActive]}
-            onPress={() => setView("staff")}
-            testID="view-toggle-staff"
-          >
-            <Text
-              style={[styles.viewToggleText, view === "staff" && styles.viewToggleTextActive]}
-            >
-              Staff Hours
-            </Text>
-          </Pressable>
-          <Pressable
             style={[styles.viewToggleBtn, view === "pending-requests" && styles.viewToggleBtnActive]}
             onPress={() => setView("pending-requests")}
             testID="view-toggle-pending-requests"
@@ -883,9 +715,7 @@ export default function TimeTrackingScreen() {
       ) : null}
 
       {/* Content */}
-      {isManager && view === "staff"
-        ? renderStaffView()
-        : isManager && view === "pending-requests"
+      {isManager && view === "pending-requests"
         ? renderPendingRequestsView()
         : renderMyHoursView()}
 
@@ -1447,38 +1277,6 @@ const styles = StyleSheet.create({
     marginTop: 6,
     fontStyle: "italic",
   },
-
-  staffCard: {
-    backgroundColor: "#fff",
-    borderRadius: 14,
-    padding: 16,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  staffCardTop: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 4,
-  },
-  staffName: { fontSize: 16, fontWeight: "700", color: "#1a365d" },
-  staffHours: { fontSize: 16, fontWeight: "800", color: "#2c7a7b" },
-  staffMeta: { fontSize: 13, color: "#718096" },
-  staffChevron: { fontSize: 14, color: "#a0aec0", marginTop: 6, textAlign: "right" },
-  subEntry: {
-    backgroundColor: "#f8fafc",
-    borderRadius: 10,
-    padding: 12,
-    marginTop: 8,
-  },
-  subEntryTop: { flexDirection: "row", justifyContent: "space-between" },
-  subEntryFacility: { fontSize: 14, fontWeight: "600", color: "#1a365d" },
-  subEntryHours: { fontSize: 14, fontWeight: "700", color: "#2c7a7b" },
-  subEntryDate: { fontSize: 12, color: "#a0aec0", marginTop: 2 },
-  subEntryTime: { fontSize: 12, color: "#4a5568", marginTop: 2 },
 
   fab: {
     position: "absolute",
