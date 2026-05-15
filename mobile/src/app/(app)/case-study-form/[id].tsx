@@ -429,13 +429,13 @@ export default function CaseStudyFormScreen() {
                 </View>
               </View>
             ))}
-            <View style={[styles.field, { marginTop: 8 }]}>
-              <Text style={styles.chipGroupLabel}>Other (not listed)</Text>
+            <View style={[styles.field, { marginTop: 12 }]}>
+              <Text style={styles.fieldLabel}>Other Procedure (type a procedure not listed above)</Text>
               <TextInput
                 style={styles.input}
                 value={form.procedureOther}
                 onChangeText={(v) => update("procedureOther", v)}
-                placeholder="Enter procedure if not listed above"
+                placeholder="e.g., custom procedure name"
                 testID="procedure-other-input"
               />
             </View>
