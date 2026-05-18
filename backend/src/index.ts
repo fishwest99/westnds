@@ -16,6 +16,8 @@ import { timeOffRouter } from "./routes/time-off";
 import { workEntriesRouter } from "./routes/work-entries";
 import { patientCasesRouter } from "./routes/patient-cases";
 import { missedHoursRequestsRouter } from "./routes/missed-hours-requests";
+import { companiesRouter } from "./routes/companies";
+import { ensureDefaultCompanies } from "./lib/ensure-companies";
 
 const app = new Hono<{
   Variables: {
@@ -79,6 +81,9 @@ app.route("/api/work-entries", workEntriesRouter);
 app.route("/api/cases", patientCasesRouter);
 app.route("/api/medical-lien-forms", medicalLienFormsRouter);
 app.route("/api/missed-hours-requests", missedHoursRequestsRouter);
+app.route("/api/companies", companiesRouter);
+
+ensureDefaultCompanies().catch((err) => console.error("Failed to ensure default companies:", err));
 
 const port = Number(process.env.PORT) || 3000;
 

@@ -1,4 +1,5 @@
 import type { TDocumentDefinitions, Content, TFontDictionary } from "pdfmake/interfaces";
+import type { CompanyHeader } from "./load-form-company";
 
 // pdfmake's @types package only covers the browser API; use a require for server-side PdfPrinter
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -27,7 +28,14 @@ function check(val: boolean | null | undefined): string {
   return val ? "☑" : "☐";
 }
 
-export async function generateConsentFormPdf(form: Record<string, unknown>): Promise<Buffer> {
+export async function generateConsentFormPdf(form: Record<string, unknown>, company?: CompanyHeader): Promise<Buffer> {
+  const co: CompanyHeader = company ?? { name: "", address: "", phone: "", fax: "", ein: "" };
+  const contactLine = [
+    co.phone ? `Phone: ${co.phone}` : "",
+    co.fax ? `Fax: ${co.fax}` : "",
+    co.ein ? `EIN # ${co.ein}` : "",
+  ].filter(Boolean).join("    ");
+
   const docDef: TDocumentDefinitions = {
     defaultStyle: { font: "Helvetica", fontSize: 9 },
     pageMargins: [40, 50, 40, 50],
@@ -35,12 +43,19 @@ export async function generateConsentFormPdf(form: Record<string, unknown>): Pro
       // Header
       {
         columns: [
-          { text: "West NDx", style: "orgName", width: "*" },
+          {
+            width: "*",
+            stack: [
+              { text: co.name || " ", style: "orgName" },
+              { text: co.address || " ", fontSize: 8 },
+              { text: contactLine || " ", fontSize: 8 },
+            ],
+          },
           {
             text: "Informed Consent, Assignment of Benefits\nand Financial Responsibility for\nIntraoperative Neuromonitoring Services",
             style: "headerTitle",
             alignment: "right",
-            width: "60%",
+            width: "55%",
           },
         ],
         marginBottom: 10,

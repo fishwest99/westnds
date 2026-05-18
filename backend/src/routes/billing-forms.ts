@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { prisma } from "../prisma";
 import { auth } from "../auth";
 import { generateBillingFormPdf } from "../lib/generate-billing-pdf";
+import { loadCompanyForCase } from "../lib/load-form-company";
 
 const billingFormsRouter = new Hono<{
   Variables: {
@@ -130,7 +131,8 @@ billingFormsRouter.get("/:id/pdf", async (c) => {
     return c.json({ error: { message: "Not found" } }, 404);
   }
   try {
-    const pdfBuffer = await generateBillingFormPdf(form as unknown as Record<string, unknown>);
+    const company = await loadCompanyForCase(form.caseId);
+    const pdfBuffer = await generateBillingFormPdf(form as unknown as Record<string, unknown>, company);
     const patientName = (form.patientName as string) || id;
     const filename = `billing-form-${patientName.replace(/\s+/g, "-")}.pdf`;
     return new Response(pdfBuffer.buffer as ArrayBuffer, {

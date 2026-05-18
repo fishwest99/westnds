@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { prisma } from "../prisma";
 import { auth } from "../auth";
 import { generateMedicalLienPdf } from "../lib/generate-medical-lien-pdf";
+import { loadCompanyForCase } from "../lib/load-form-company";
 
 const medicalLienFormsRouter = new Hono<{
   Variables: {
@@ -84,7 +85,8 @@ medicalLienFormsRouter.get("/:id/pdf", async (c) => {
     return c.json({ error: { message: "Not found" } }, 404);
   }
   try {
-    const pdfBuffer = await generateMedicalLienPdf(form as unknown as Record<string, unknown>);
+    const company = await loadCompanyForCase(form.caseId);
+    const pdfBuffer = await generateMedicalLienPdf(form as unknown as Record<string, unknown>, company);
     const patientName = (form.patientName as string) || id;
     const filename = `medical-lien-${patientName.replace(/\s+/g, "-")}.pdf`;
     return new Response(pdfBuffer.buffer as ArrayBuffer, {

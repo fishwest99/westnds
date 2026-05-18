@@ -284,6 +284,26 @@ export default function HomeScreen() {
               </View>
             </Pressable>
           ))}
+
+          {profile?.isManager ? (
+            <Pressable
+              style={({ pressed }) => [
+                styles.tile,
+                { backgroundColor: "#fef3f2", opacity: pressed ? 0.85 : 1 },
+              ]}
+              onPress={() => router.push("/company-settings" as never)}
+              testID="tile-company-settings"
+            >
+              <View style={[styles.tileIconWrap, { backgroundColor: "#c5302322" }]}>
+                <Text style={styles.tileIcon}>🏢</Text>
+              </View>
+              <Text style={[styles.tileLabel, { color: "#c53030" }]}>Company Settings</Text>
+              <Text style={styles.tileDesc}>Edit info shown on report PDFs</Text>
+              <View style={[styles.tileArrow, { backgroundColor: "#c53030" }]}>
+                <Text style={styles.tileArrowText}>→</Text>
+              </View>
+            </Pressable>
+          ) : null}
         </View>
 
         <View style={{ height: 32 }} />

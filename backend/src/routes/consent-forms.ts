@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { prisma } from "../prisma";
 import { auth } from "../auth";
 import { generateConsentFormPdf } from "../lib/generate-pdf";
+import { loadCompanyForCase } from "../lib/load-form-company";
 
 const consentFormRouter = new Hono<{
   Variables: {
@@ -100,7 +101,8 @@ consentFormRouter.get("/:id/pdf", async (c) => {
     return c.json({ error: { message: "Not found" } }, 404);
   }
   try {
-    const pdfBuffer = await generateConsentFormPdf(form as unknown as Record<string, unknown>);
+    const company = await loadCompanyForCase(form.caseId);
+    const pdfBuffer = await generateConsentFormPdf(form as unknown as Record<string, unknown>, company);
     const filename = `consent-form-${(form.patientName as string | null)?.replace(/\s+/g, "-") || id}.pdf`;
     return new Response(pdfBuffer.buffer as ArrayBuffer, {
       headers: {

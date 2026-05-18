@@ -1,4 +1,5 @@
 import type { TDocumentDefinitions, Content } from "pdfmake/interfaces";
+import type { CompanyHeader } from "./load-form-company";
 
 // pdfmake's @types package only covers the browser API; use a require for server-side PdfPrinter
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -37,9 +38,16 @@ function checkboxRow(items: string[], selected: string[]): Content {
   return { text: parts };
 }
 
-export async function generateCaseStudyFormPdf(form: Record<string, unknown>): Promise<Buffer> {
+export async function generateCaseStudyFormPdf(form: Record<string, unknown>, company?: CompanyHeader): Promise<Buffer> {
   const f = (key: string): string => String(form[key] ?? "");
   const b = (key: string): boolean => Boolean(form[key]);
+
+  const co: CompanyHeader = company ?? { name: "", address: "", phone: "", fax: "", ein: "" };
+  const contactLine = [
+    co.phone ? `Phone: ${co.phone}` : "",
+    co.fax ? `Fax: ${co.fax}` : "",
+    co.ein ? `EIN # ${co.ein}` : "",
+  ].filter(Boolean).join("    ");
 
   const selectedProcedures: string[] = JSON.parse(String(form.selectedProcedures || "[]"));
   const electrodePickupSites: string[] = JSON.parse(String(form.electrodePickupSites || "[]"));
@@ -57,13 +65,18 @@ export async function generateCaseStudyFormPdf(form: Record<string, unknown>): P
     content: [
       // ── Company Header ──────────────────────────────────────────────
       {
-        text: "West Neurodiagnostic Services, Inc.",
+        text: co.name || " ",
         bold: true,
         fontSize: 13,
         alignment: "center",
       } as Content,
       {
-        text: "17345 Falling Creek Avenue, Bakersfield, CA 93314",
+        text: co.address || " ",
+        alignment: "center",
+        fontSize: 9,
+      } as Content,
+      {
+        text: contactLine || " ",
         alignment: "center",
         fontSize: 9,
         marginBottom: 6,

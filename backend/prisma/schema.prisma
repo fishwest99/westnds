@@ -389,6 +389,8 @@ model PatientCase {
   id          String   @id @default(cuid())
   userId      String
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  companyId   String?
+  company     Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)
   patientName String
   date        String   @default("")
   status      String   @default("active")
@@ -399,4 +401,18 @@ model PatientCase {
   consentForms    ConsentForm[]
   caseStudyForms  CaseStudyForm[]
   medicalLienForms MedicalLienForm[]
+}
+
+model Company {
+  id        String   @id @default(cuid())
+  slug      String   @unique
+  name      String   @default("")
+  address   String   @default("")
+  phone     String   @default("")
+  fax       String   @default("")
+  ein       String   @default("")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  cases     PatientCase[]
 }

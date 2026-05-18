@@ -14,8 +14,26 @@ patientCasesRouter.post("/", async (c) => {
   const user = c.get("user");
   if (!user) return c.json({ error: { message: "Unauthorized" } }, 401);
   const body = await c.req.json().catch(() => ({}));
+
+  // Resolve company: accept either a companyId or a companySlug
+  let companyId: string | null = typeof body.companyId === "string" ? body.companyId : null;
+  if (!companyId && typeof body.companySlug === "string") {
+    const co = await prisma.company.findUnique({ where: { slug: body.companySlug } });
+    companyId = co?.id ?? null;
+  }
+  // Default to "services" if nothing was provided
+  if (!companyId) {
+    const co = await prisma.company.findUnique({ where: { slug: "services" } });
+    companyId = co?.id ?? null;
+  }
+
   const patientCase = await prisma.patientCase.create({
-    data: { userId: user.id, patientName: body.patientName || "", date: body.date || "" },
+    data: {
+      userId: user.id,
+      patientName: body.patientName || "",
+      date: body.date || "",
+      companyId,
+    },
   });
   return c.json({ data: patientCase }, 201);
 });
@@ -31,6 +49,7 @@ patientCasesRouter.get("/", async (c) => {
     orderBy: { createdAt: "desc" },
     include: {
       user: { select: { id: true, name: true, email: true } },
+      company: true,
       billingForms: { select: { id: true, status: true } },
       consentForms: { select: { id: true, status: true, surgeonName: true, dateOfService: true } },
       caseStudyForms: { select: { id: true, status: true } },
@@ -57,6 +76,7 @@ patientCasesRouter.get("/:id", async (c) => {
     where: { id },
     include: {
       user: { select: { id: true, name: true, email: true } },
+      company: true,
       billingForms: { select: { id: true, status: true } },
       consentForms: { select: { id: true, status: true } },
       caseStudyForms: { select: { id: true, status: true } },
@@ -79,7 +99,12 @@ patientCasesRouter.put("/:id", async (c) => {
     return c.json({ error: { message: "Not found" } }, 404);
   }
   const body = await c.req.json();
-  const patientCase = await prisma.patientCase.update({ where: { id }, data: body });
+  const data: Record<string, unknown> = {};
+  if (typeof body.patientName === "string") data.patientName = body.patientName;
+  if (typeof body.date === "string") data.date = body.date;
+  if (typeof body.status === "string") data.status = body.status;
+  if (typeof body.companyId === "string") data.companyId = body.companyId;
+  const patientCase = await prisma.patientCase.update({ where: { id }, data });
   return c.json({ data: patientCase });
 });
 

@@ -1,4 +1,5 @@
 import type { TDocumentDefinitions, Content } from "pdfmake/interfaces";
+import type { CompanyHeader } from "./load-form-company";
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const PdfPrinter = require("pdfmake/js/Printer").default as new (
@@ -22,8 +23,15 @@ const fonts = {
 const urlResolver = { resolve: (url: string) => url };
 const printer = new PdfPrinter(fonts, undefined, urlResolver);
 
-export async function generateMedicalLienPdf(form: Record<string, unknown>): Promise<Buffer> {
+export async function generateMedicalLienPdf(form: Record<string, unknown>, company?: CompanyHeader): Promise<Buffer> {
   const f = (key: string): string => String(form[key] ?? "");
+
+  const co: CompanyHeader = company ?? { name: "", address: "", phone: "", fax: "", ein: "" };
+  const contactLine = [
+    co.phone ? `Phone: ${co.phone}` : "",
+    co.fax ? `Fax: ${co.fax}` : "",
+    co.ein ? `EIN # ${co.ein}` : "",
+  ].filter(Boolean).join("    ");
 
   const patSig = f("patientSignature");
   const attySig = f("attorneySignature");
@@ -42,14 +50,10 @@ export async function generateMedicalLienPdf(form: Record<string, unknown>): Pro
     defaultStyle: { font: "Helvetica", fontSize: 9 },
     pageMargins: [50, 60, 50, 60],
     content: [
-      // Header logos area - text-based since we don't have logos
-      {
-        columns: [
-          { width: "*", text: [{ text: "West Neurodiagnostic Reading", bold: true, color: "#8B0000" }, "\nNEUROPHYSIOLOGICAL MONITORING"] },
-          { width: "*", text: [{ text: "West Neurodiagnostic Services", bold: true, color: "#00008B" }, "\nINTRAOPERATIVE NEUROMONITORING"], alignment: "right" as const },
-        ],
-        marginBottom: 8,
-      } as Content,
+      // Company header
+      { text: co.name || " ", bold: true, fontSize: 13, alignment: "center" as const } as Content,
+      { text: co.address || " ", alignment: "center" as const, fontSize: 9 } as Content,
+      { text: contactLine || " ", alignment: "center" as const, fontSize: 9, marginBottom: 6 } as Content,
       { canvas: [{ type: "line", x1: 0, y1: 0, x2: 495, y2: 0, lineWidth: 1.5, lineColor: "#333" }], marginBottom: 12 },
 
       // Title

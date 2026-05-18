@@ -4,8 +4,11 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api/api";
 import { DatePickerInput } from "@/components/DatePickerInput";
+
+type Company = { id: string; slug: string; name: string };
 
 export default function NewCaseScreen() {
   const router = useRouter();
@@ -14,15 +17,26 @@ export default function NewCaseScreen() {
     const d = new Date();
     return `${(d.getMonth() + 1).toString().padStart(2, "0")}/${d.getDate().toString().padStart(2, "0")}/${d.getFullYear()}`;
   });
+  const [companySlug, setCompanySlug] = useState<string>("services");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  const { data: companies } = useQuery({
+    queryKey: ["companies"],
+    queryFn: () => api.get<Company[]>("/api/companies"),
+    staleTime: 1000 * 60 * 5,
+  });
 
   const handleCreate = async () => {
     if (!patientName.trim()) { setError("Patient name is required."); return; }
     setError("");
     setLoading(true);
     try {
-      const result = await api.post<{ id: string }>("/api/cases", { patientName: patientName.trim(), date });
+      const result = await api.post<{ id: string }>("/api/cases", {
+        patientName: patientName.trim(),
+        date,
+        companySlug,
+      });
       if (!result?.id) { setError("Failed to create case. Please try again."); return; }
       router.replace(`/case/${result.id}` as never);
     } catch {
@@ -84,6 +98,32 @@ export default function NewCaseScreen() {
             testID="date-input"
           />
 
+          <Text style={styles.label}>Company</Text>
+          <View style={styles.companyRow}>
+            {(companies ?? []).map((co) => {
+              const selected = co.slug === companySlug;
+              return (
+                <Pressable
+                  key={co.id}
+                  onPress={() => setCompanySlug(co.slug)}
+                  style={({ pressed }) => [
+                    styles.companyOption,
+                    selected && styles.companyOptionSelected,
+                    pressed && { opacity: 0.85 },
+                  ]}
+                  testID={`company-option-${co.slug}`}
+                >
+                  <View style={[styles.radio, selected && styles.radioSelected]}>
+                    {selected ? <View style={styles.radioDot} /> : null}
+                  </View>
+                  <Text style={[styles.companyName, selected && styles.companyNameSelected]} numberOfLines={2}>
+                    {co.name || co.slug}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+
           {error ? <Text style={styles.error}>{error}</Text> : null}
 
           {/* Button at the top of actions — always visible */}
@@ -143,5 +183,53 @@ const styles = StyleSheet.create({
   bottomBtnWrap: {
     marginHorizontal: 16,
     marginTop: 20,
+  },
+  companyRow: {
+    flexDirection: "row",
+    gap: 10,
+    marginBottom: 16,
+  },
+  companyOption: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1.5,
+    borderColor: "#e2e8f0",
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    backgroundColor: "#f8fafc",
+    gap: 10,
+  },
+  companyOptionSelected: {
+    borderColor: "#1a365d",
+    backgroundColor: "#ebf4ff",
+  },
+  radio: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: "#cbd5e0",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  radioSelected: {
+    borderColor: "#1a365d",
+  },
+  radioDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: "#1a365d",
+  },
+  companyName: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#4a5568",
+  },
+  companyNameSelected: {
+    color: "#1a365d",
   },
 });

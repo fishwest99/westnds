@@ -1,4 +1,5 @@
 import type { TDocumentDefinitions, Content, TableCell } from "pdfmake/interfaces";
+import type { CompanyHeader } from "./load-form-company";
 
 // pdfmake's @types package only covers the browser API; use a require for server-side PdfPrinter
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -38,9 +39,15 @@ function cptRows(entries: [string, string][], f: (key: string) => string, yesNo 
   });
 }
 
-export async function generateBillingFormPdf(form: Record<string, unknown>): Promise<Buffer> {
+export async function generateBillingFormPdf(form: Record<string, unknown>, company?: CompanyHeader): Promise<Buffer> {
   const f = (key: string): string => String(form[key] ?? "");
   const b = (key: string): boolean => Boolean(form[key]);
+  const co: CompanyHeader = company ?? { name: "", address: "", phone: "", fax: "", ein: "" };
+  const contactLine = [
+    co.phone ? `Phone: ${co.phone}` : "",
+    co.fax ? `Fax: ${co.fax}` : "",
+    co.ein ? `EIN # ${co.ein}` : "",
+  ].filter(Boolean).join("    ");
 
   const evokedRows = cptRows([
     ["95930 — Visual EP", "cptVisual"],
@@ -83,9 +90,9 @@ export async function generateBillingFormPdf(form: Record<string, unknown>): Pro
           {
             width: "*",
             stack: [
-              { text: "West Neurodiagnostic Services, Inc.", style: "companyName" },
-              { text: "17345 Falling Creek Avenue, Bakersfield, CA 93314", style: "companyAddress" },
-              { text: "Phone: (661) 496-7871    Fax: (661) 587-5453    EIN # 45-0905853", style: "companyAddress" },
+              { text: co.name || " ", style: "companyName" },
+              { text: co.address || " ", style: "companyAddress" },
+              { text: contactLine || " ", style: "companyAddress" },
             ],
           },
           {
