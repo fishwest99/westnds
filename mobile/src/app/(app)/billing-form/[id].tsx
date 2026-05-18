@@ -54,7 +54,7 @@ type BillingFormData = {
   thyroidKit: string;
   ssepEMG: string;
   fluobeam: string;
-  pedicleProbe: boolean;
+  pedicleProbe: string;
   needleCount: string;
   needlesUsed: string;
   needlesRemoved: string;
@@ -81,7 +81,7 @@ const defaultForm: BillingFormData = {
   cptElectrocorticography: "", cptStatFee: "", cptStandby: "", standbyHours: "",
   cptEEG: "", flatFeeMEP: "", baseline: "",
   startTime: "", endTime: "", electrodesUsed: "", thyroidKit: "",
-  ssepEMG: "", fluobeam: "", pedicleProbe: false, needleCount: "", needlesUsed: "", needlesRemoved: "",
+  ssepEMG: "", fluobeam: "", pedicleProbe: "", needleCount: "", needlesUsed: "", needlesRemoved: "",
   totalHours: "", drivingTime: "", computerUsed: "", cancellation: "", neurologist: "",
   technicianSignature: "", technicianSignatureDate: "", rnSignature: "", rnSignatureDate: "",
 };
@@ -626,13 +626,7 @@ export default function EditBillingFormScreen() {
             <ModalityRow label="Thyroid Kit / Facial Kit" cptCode="" value={form.thyroidKit} onChange={(v) => update("thyroidKit", v)} />
             <ModalityRow label="SSEP / EMG" cptCode="" value={form.ssepEMG} onChange={(v) => update("ssepEMG", v)} />
             <ModalityRow label="Fluobeam" cptCode="" value={form.fluobeam} onChange={(v) => update("fluobeam", v)} />
-            <View style={{ paddingVertical: 6 }}>
-              <Checkbox
-                label="Pedicle Probe"
-                value={form.pedicleProbe}
-                onChange={(v) => update("pedicleProbe", v)}
-              />
-            </View>
+            <ModalityRow label="Pedicle Probe" cptCode="" value={form.pedicleProbe} onChange={(v) => update("pedicleProbe", v)} />
             <View style={styles.row}>
               <View style={[styles.field, { flex: 1, marginRight: 8 }]}>
                 <Text style={styles.fieldLabel}>Needles Used</Text>
