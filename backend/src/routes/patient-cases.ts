@@ -20,14 +20,17 @@ patientCasesRouter.post("/", async (c) => {
   return c.json({ data: patientCase }, 201);
 });
 
-// GET /api/cases — list current user's cases with nested form statuses
+// GET /api/cases — list cases (own cases, or all cases if manager) with nested form statuses
 patientCasesRouter.get("/", async (c) => {
   const user = c.get("user");
   if (!user) return c.json({ error: { message: "Unauthorized" } }, 401);
+  const dbUser = await prisma.user.findUnique({ where: { id: user.id } });
+  const isManager = dbUser?.isManager ?? false;
   const cases = await prisma.patientCase.findMany({
-    where: { userId: user.id },
+    where: isManager ? undefined : { userId: user.id },
     orderBy: { createdAt: "desc" },
     include: {
+      user: { select: { id: true, name: true, email: true } },
       billingForms: { select: { id: true, status: true } },
       consentForms: { select: { id: true, status: true, surgeonName: true, dateOfService: true } },
       caseStudyForms: { select: { id: true, status: true } },
@@ -37,7 +40,8 @@ patientCasesRouter.get("/", async (c) => {
   const withSurgeon = cases.map((c) => {
     const surgeonName = c.consentForms.find((f) => f.surgeonName && f.surgeonName.trim().length > 0)?.surgeonName ?? "";
     const dateOfService = c.date || c.consentForms.find((f) => f.dateOfService && f.dateOfService.trim().length > 0)?.dateOfService || "";
-    return { ...c, surgeonName, dateOfService };
+    const technologistName = c.user?.name || c.user?.email || "";
+    return { ...c, surgeonName, dateOfService, technologistName };
   });
   return c.json({ data: withSurgeon });
 });
@@ -46,17 +50,20 @@ patientCasesRouter.get("/", async (c) => {
 patientCasesRouter.get("/:id", async (c) => {
   const user = c.get("user");
   if (!user) return c.json({ error: { message: "Unauthorized" } }, 401);
+  const dbUser = await prisma.user.findUnique({ where: { id: user.id } });
+  const isManager = dbUser?.isManager ?? false;
   const id = c.req.param("id");
   const patientCase = await prisma.patientCase.findUnique({
     where: { id },
     include: {
+      user: { select: { id: true, name: true, email: true } },
       billingForms: { select: { id: true, status: true } },
       consentForms: { select: { id: true, status: true } },
       caseStudyForms: { select: { id: true, status: true } },
       medicalLienForms: { select: { id: true, status: true } },
     },
   });
-  if (!patientCase || patientCase.userId !== user.id) {
+  if (!patientCase || (!isManager && patientCase.userId !== user.id)) {
     return c.json({ error: { message: "Not found" } }, 404);
   }
   return c.json({ data: patientCase });
