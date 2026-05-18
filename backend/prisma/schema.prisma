@@ -294,6 +294,7 @@ model BillingForm {
   thyroidKit     String @default("")
   ssepEMG        String @default("")
   fluobeam       String @default("")
+  pedicleProbe   Boolean @default(false)
   needleCount    String @default("")
   needlesUsed    String @default("")
   needlesRemoved String @default("")
