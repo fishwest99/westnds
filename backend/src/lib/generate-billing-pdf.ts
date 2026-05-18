@@ -248,8 +248,8 @@ export async function generateBillingFormPdf(form: Record<string, unknown>, comp
             [
               { text: "Pedicle Probe", bold: true } as TableCell,
               { text: f("pedicleProbe") === "yes" ? "Yes" : "No", alignment: "center" as const } as TableCell,
-              { text: "" } as TableCell,
-              { text: "" } as TableCell,
+              { text: "Pedicle Probe Qty", bold: true } as TableCell,
+              { text: f("pedicleProbeQty"), alignment: "center" as const } as TableCell,
               { text: "" } as TableCell,
               { text: "" } as TableCell,
             ],

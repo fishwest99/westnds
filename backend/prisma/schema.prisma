@@ -295,6 +295,7 @@ model BillingForm {
   ssepEMG        String @default("")
   fluobeam       String @default("")
   pedicleProbe   String @default("")
+  pedicleProbeQty String @default("")
   needleCount    String @default("")
   needlesUsed    String @default("")
   needlesRemoved String @default("")

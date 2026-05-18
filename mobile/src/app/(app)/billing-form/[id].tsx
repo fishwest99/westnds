@@ -55,6 +55,7 @@ type BillingFormData = {
   ssepEMG: string;
   fluobeam: string;
   pedicleProbe: string;
+  pedicleProbeQty: string;
   needleCount: string;
   needlesUsed: string;
   needlesRemoved: string;
@@ -81,7 +82,7 @@ const defaultForm: BillingFormData = {
   cptElectrocorticography: "", cptStatFee: "", cptStandby: "", standbyHours: "",
   cptEEG: "", flatFeeMEP: "", baseline: "",
   startTime: "", endTime: "", electrodesUsed: "", thyroidKit: "",
-  ssepEMG: "", fluobeam: "", pedicleProbe: "", needleCount: "", needlesUsed: "", needlesRemoved: "",
+  ssepEMG: "", fluobeam: "", pedicleProbe: "", pedicleProbeQty: "", needleCount: "", needlesUsed: "", needlesRemoved: "",
   totalHours: "", drivingTime: "", computerUsed: "", cancellation: "", neurologist: "",
   technicianSignature: "", technicianSignatureDate: "", rnSignature: "", rnSignatureDate: "",
 };
@@ -627,6 +628,19 @@ export default function EditBillingFormScreen() {
             <ModalityRow label="SSEP / EMG" cptCode="" value={form.ssepEMG} onChange={(v) => update("ssepEMG", v)} />
             <ModalityRow label="Fluobeam" cptCode="" value={form.fluobeam} onChange={(v) => update("fluobeam", v)} />
             <ModalityRow label="Pedicle Probe" cptCode="" value={form.pedicleProbe} onChange={(v) => update("pedicleProbe", v)} />
+            {form.pedicleProbe === "yes" ? (
+              <View style={styles.field}>
+                <Text style={styles.fieldLabel}>Pedicle Probe Qty</Text>
+                <TextInput
+                  style={styles.input}
+                  value={form.pedicleProbeQty}
+                  onChangeText={(v) => update("pedicleProbeQty", v.replace(/\D/g, ""))}
+                  placeholder="Quantity"
+                  keyboardType="numeric"
+                  testID="pedicle-probe-qty-input"
+                />
+              </View>
+            ) : null}
             <View style={styles.row}>
               <View style={[styles.field, { flex: 1, marginRight: 8 }]}>
                 <Text style={styles.fieldLabel}>Needles Used</Text>
