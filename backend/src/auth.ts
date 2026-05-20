@@ -20,6 +20,8 @@ export const auth = betterAuth({
     "https://*.vibecode.dev",
     "https://vibecode.dev",
     "https://*.vercel.app",
+    "https://app.westnds.com",
+    "https://westnds.com",
   ],
   plugins: [
     expo(),
