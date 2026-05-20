@@ -1,4 +1,4 @@
-import { PDFDocument, PDFTextField, PDFForm, PDFPage } from "pdf-lib";
+import { PDFDocument, PDFTextField, PDFForm, PDFPage, PDFImage } from "pdf-lib";
 import { readFileSync } from "fs";
 import { join } from "path";
 
@@ -8,23 +8,29 @@ const X = "X";
 const checkMark = (v: unknown): string => (v ? X : "");
 const str = (v: unknown): string => String(v ?? "");
 
-async function drawSignatureImage(
+interface SignaturePlacement {
+  page: PDFPage;
+  image: PDFImage;
+  rect: { x: number; y: number; width: number; height: number };
+}
+
+async function prepareSignaturePlacement(
   pdfDoc: PDFDocument,
   pdfForm: PDFForm,
   fieldName: string,
   dataUrl: string,
-): Promise<boolean> {
-  if (!dataUrl.startsWith("data:image")) return false;
+): Promise<SignaturePlacement | null> {
+  if (!dataUrl.startsWith("data:image")) return null;
 
   try {
     const field = pdfForm.getField(fieldName);
     const widgets = field.acroField.getWidgets();
     const widget = widgets[0];
-    if (!widget) return false;
+    if (!widget) return null;
     const rect = widget.getRectangle();
 
     const commaIdx = dataUrl.indexOf(",");
-    if (commaIdx < 0) return false;
+    if (commaIdx < 0) return null;
     const header = dataUrl.substring(0, commaIdx);
     const base64 = dataUrl.substring(commaIdx + 1);
     const imgBytes = Buffer.from(base64, "base64");
@@ -36,7 +42,7 @@ async function drawSignatureImage(
 
     const pages = pdfDoc.getPages();
     const fallback = pages[pages.length - 1];
-    if (!fallback) return false;
+    if (!fallback) return null;
     let targetPage: PDFPage = fallback;
     const widgetPageRef = widget.P();
     if (widgetPageRef) {
@@ -44,18 +50,14 @@ async function drawSignatureImage(
       if (match) targetPage = match;
     }
 
-    const scaled = image.scaleToFit(rect.width, rect.height);
-    targetPage.drawImage(image, {
-      x: rect.x + (rect.width - scaled.width) / 2,
-      y: rect.y + (rect.height - scaled.height) / 2,
-      width: scaled.width,
-      height: scaled.height,
-    });
+    // Clear the text field so flatten doesn't render any text
+    if (field instanceof PDFTextField) {
+      field.setText("");
+    }
 
-    pdfForm.removeField(field);
-    return true;
+    return { page: targetPage, image, rect };
   } catch {
-    return false;
+    return null;
   }
 }
 
@@ -140,25 +142,41 @@ export async function fillConsentTemplate(form: Record<string, unknown>): Promis
   setText("undefined_9", checkMark(form.ackFinancialResp));
   // undefined_10 left blank — may be the modality "Other" text or similar; awaiting user confirmation
 
-  // Patient signature block — only signature image + date; no typed name
+  // Dates
   setText("Date5_es_:signer:date", str(form.patientSignatureDate));
-  await drawSignatureImage(
+  setText("Date6_es_:signer:date", str(form.technicianDate));
+
+  // Capture signature placements (also clears the text fields), draw AFTER flatten
+  const placements: SignaturePlacement[] = [];
+  const patientPlacement = await prepareSignaturePlacement(
     pdfDoc,
     pdfForm,
     "Signature1_es_:signer:signature",
     str(form.patientSignature),
   );
+  if (patientPlacement) placements.push(patientPlacement);
 
-  // Technician block — only signature image + date; no typed name
-  setText("Date6_es_:signer:date", str(form.technicianDate));
-  await drawSignatureImage(
+  const techPlacement = await prepareSignaturePlacement(
     pdfDoc,
     pdfForm,
     "Signature2_es_:signer:signature",
     str(form.technicianSignature),
   );
+  if (techPlacement) placements.push(techPlacement);
 
   pdfForm.flatten();
+
+  // Draw signature images on top of the now-flattened page
+  for (const { page, image, rect } of placements) {
+    const scaled = image.scaleToFit(rect.width, rect.height);
+    page.drawImage(image, {
+      x: rect.x + (rect.width - scaled.width) / 2,
+      y: rect.y + (rect.height - scaled.height) / 2,
+      width: scaled.width,
+      height: scaled.height,
+    });
+  }
+
   const out = await pdfDoc.save();
   return Buffer.from(out);
 }
