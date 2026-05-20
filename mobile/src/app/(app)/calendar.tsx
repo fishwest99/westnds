@@ -193,7 +193,10 @@ export default function CalendarScreen() {
     queryKey: ["gcal-events", year, month],
     queryFn: async (): Promise<GCalEvent[]> => {
       if (!ICAL_URL) return [];
-      const res = await fetch(ICAL_URL);
+      const backendUrl = process.env.EXPO_PUBLIC_BACKEND_URL!;
+      const proxied = `${backendUrl}/api/google-calendar/ical?url=${encodeURIComponent(ICAL_URL)}`;
+      const res = await fetch(proxied);
+      if (!res.ok) return [];
       const text = await res.text();
       return parseIcalEvents(text);
     },

@@ -17,6 +17,7 @@ import { workEntriesRouter } from "./routes/work-entries";
 import { patientCasesRouter } from "./routes/patient-cases";
 import { missedHoursRequestsRouter } from "./routes/missed-hours-requests";
 import { companiesRouter } from "./routes/companies";
+import { googleCalendarRouter } from "./routes/google-calendar";
 import { ensureDefaultCompanies } from "./lib/ensure-companies";
 
 const app = new Hono<{
@@ -84,6 +85,7 @@ app.route("/api/cases", patientCasesRouter);
 app.route("/api/medical-lien-forms", medicalLienFormsRouter);
 app.route("/api/missed-hours-requests", missedHoursRequestsRouter);
 app.route("/api/companies", companiesRouter);
+app.route("/api/google-calendar", googleCalendarRouter);
 
 ensureDefaultCompanies().catch((err) => console.error("Failed to ensure default companies:", err));
 
