@@ -25,6 +25,7 @@
     "@vibecodeapp/proxy": "^2.0.3",
     "better-auth": "^1.6.11",
     "hono": "4.6.0",
+    "pdf-lib": "^1.17.1",
     "pdfmake": "^0.3.8",
     "zod": "4.1.11"
   }
