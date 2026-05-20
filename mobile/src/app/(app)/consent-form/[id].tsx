@@ -9,7 +9,7 @@ import * as Sharing from "expo-sharing";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { authClient } from "@/lib/auth/auth-client";
 import { api } from "@/lib/api/api";
-import { downloadPdfToFile } from "@/lib/pdf/download-pdf";
+import { downloadPdfToFile, sharePdfOnWeb } from "@/lib/pdf/download-pdf";
 import { SignaturePad } from "@/components/SignaturePad";
 import { DatePickerInput } from "@/components/DatePickerInput";
 
@@ -223,7 +223,13 @@ export default function EditConsentFormScreen() {
     if (Platform.OS === "web") {
       setEmailLoading(true);
       try {
-        await downloadPdf();
+        const result = await sharePdfOnWeb({
+          url: `${process.env.EXPO_PUBLIC_BACKEND_URL}/api/consent-forms/${id}/pdf`,
+          filename: `consent-form-${id}.pdf`,
+          title: `West NDx Consent Form - ${form.patientName || "Patient"}`,
+          text: `Attached: completed consent form.\n\nPatient: ${form.patientName || ""}\nDate of Service: ${form.dateOfService || ""}\nSurgeon: ${form.surgeonName || ""}`,
+        });
+        if (result === "failed") setInlineError("Failed to share PDF. Please try again.");
       } finally {
         setEmailLoading(false);
       }
@@ -251,9 +257,17 @@ export default function EditConsentFormScreen() {
   const handleSharePdf = async () => {
     setShareLoading(true);
     try {
+      if (Platform.OS === "web") {
+        const result = await sharePdfOnWeb({
+          url: `${process.env.EXPO_PUBLIC_BACKEND_URL}/api/consent-forms/${id}/pdf`,
+          filename: `consent-form-${id}.pdf`,
+          title: `West NDx Consent Form - ${form.patientName || "Patient"}`,
+        });
+        if (result === "failed") setInlineError("Failed to share PDF. Please try again.");
+        return;
+      }
       const fileUri = await downloadPdf();
       if (!fileUri) return;
-      if (Platform.OS === "web") return;
       const canShare = await Sharing.isAvailableAsync();
       if (!canShare) {
         setInlineError("Sharing is not available on this device.");

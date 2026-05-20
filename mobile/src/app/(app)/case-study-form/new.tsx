@@ -18,7 +18,7 @@ import * as Sharing from "expo-sharing";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { authClient } from "@/lib/auth/auth-client";
 import { api } from "@/lib/api/api";
-import { downloadPdfToFile } from "@/lib/pdf/download-pdf";
+import { downloadPdfToFile, sharePdfOnWeb } from "@/lib/pdf/download-pdf";
 import { SignaturePad } from "@/components/SignaturePad";
 import { DatePickerInput } from "@/components/DatePickerInput";
 
@@ -277,9 +277,16 @@ export default function NewCaseStudyFormScreen() {
 
   const handleEmailPdf = async () => {
     if (Platform.OS === "web") {
+      if (!formId) return;
       setEmailLoading(true);
       try {
-        await downloadPdf();
+        const result = await sharePdfOnWeb({
+          url: `${process.env.EXPO_PUBLIC_BACKEND_URL}/api/case-study-forms/${formId}/pdf`,
+          filename: `case-study-form-${formId}.pdf`,
+          title: `Case Study Checklist - ${form.patientName || "Patient"}`,
+          text: `Please find attached the completed case study checklist.\n\nPatient: ${form.patientName || ""}\nDate: ${form.date || ""}\nTechnician: ${form.technicianName || ""}`,
+        });
+        if (result === "failed") Alert.alert("Error", "Failed to share PDF. Please try again.");
       } finally {
         setEmailLoading(false);
       }
@@ -307,9 +314,18 @@ export default function NewCaseStudyFormScreen() {
   const handleSharePdf = async () => {
     setShareLoading(true);
     try {
+      if (Platform.OS === "web") {
+        if (!formId) return;
+        const result = await sharePdfOnWeb({
+          url: `${process.env.EXPO_PUBLIC_BACKEND_URL}/api/case-study-forms/${formId}/pdf`,
+          filename: `case-study-form-${formId}.pdf`,
+          title: `Case Study Checklist - ${form.patientName || "Patient"}`,
+        });
+        if (result === "failed") Alert.alert("Error", "Failed to share PDF. Please try again.");
+        return;
+      }
       const fileUri = await downloadPdf();
       if (!fileUri) return;
-      if (Platform.OS === "web") return;
       const canShare = await Sharing.isAvailableAsync();
       if (!canShare) {
         Alert.alert("Not Available", "Sharing is not available on this device.");
