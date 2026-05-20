@@ -1,4 +1,4 @@
-import { PDFDocument, PDFTextField } from "pdf-lib";
+import { PDFDocument, PDFTextField, PDFForm, PDFPage } from "pdf-lib";
 import { readFileSync } from "fs";
 import { join } from "path";
 
@@ -7,6 +7,57 @@ const TEMPLATE_PATH = join(import.meta.dir, "..", "..", "templates", "consent-fo
 const X = "X";
 const checkMark = (v: unknown): string => (v ? X : "");
 const str = (v: unknown): string => String(v ?? "");
+
+async function drawSignatureImage(
+  pdfDoc: PDFDocument,
+  pdfForm: PDFForm,
+  fieldName: string,
+  dataUrl: string,
+): Promise<boolean> {
+  if (!dataUrl.startsWith("data:image")) return false;
+
+  try {
+    const field = pdfForm.getField(fieldName);
+    const widgets = field.acroField.getWidgets();
+    const widget = widgets[0];
+    if (!widget) return false;
+    const rect = widget.getRectangle();
+
+    const commaIdx = dataUrl.indexOf(",");
+    if (commaIdx < 0) return false;
+    const header = dataUrl.substring(0, commaIdx);
+    const base64 = dataUrl.substring(commaIdx + 1);
+    const imgBytes = Buffer.from(base64, "base64");
+
+    const isJpg = header.includes("image/jpeg") || header.includes("image/jpg");
+    const image = isJpg
+      ? await pdfDoc.embedJpg(imgBytes)
+      : await pdfDoc.embedPng(imgBytes);
+
+    const pages = pdfDoc.getPages();
+    const fallback = pages[pages.length - 1];
+    if (!fallback) return false;
+    let targetPage: PDFPage = fallback;
+    const widgetPageRef = widget.P();
+    if (widgetPageRef) {
+      const match = pages.find((p) => p.ref === widgetPageRef);
+      if (match) targetPage = match;
+    }
+
+    const scaled = image.scaleToFit(rect.width, rect.height);
+    targetPage.drawImage(image, {
+      x: rect.x + (rect.width - scaled.width) / 2,
+      y: rect.y + (rect.height - scaled.height) / 2,
+      width: scaled.width,
+      height: scaled.height,
+    });
+
+    pdfForm.removeField(field);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 export async function fillConsentTemplate(form: Record<string, unknown>): Promise<Buffer> {
   const bytes = readFileSync(TEMPLATE_PATH);
@@ -90,15 +141,31 @@ export async function fillConsentTemplate(form: Record<string, unknown>): Promis
   setText("undefined_9", checkMark(form.ackFinancialResp));
   // undefined_10 left blank — may be the modality "Other" text or similar; awaiting user confirmation
 
-  // Patient signature block
+  // Patient signature block — draw image if available, fall back to typed name
   setText("Patient Name", str(form.patientGuardianName));
-  setText("Signature1_es_:signer:signature", str(form.patientGuardianName));
   setText("Date5_es_:signer:date", str(form.patientSignatureDate));
+  const patientSigDrawn = await drawSignatureImage(
+    pdfDoc,
+    pdfForm,
+    "Signature1_es_:signer:signature",
+    str(form.patientSignature),
+  );
+  if (!patientSigDrawn) {
+    setText("Signature1_es_:signer:signature", str(form.patientGuardianName));
+  }
 
-  // Technician block
+  // Technician block — draw image if available, fall back to typed name
   setText("Technician Name", str(form.technicianName));
-  setText("Signature2_es_:signer:signature", str(form.technicianName));
   setText("Date6_es_:signer:date", str(form.technicianDate));
+  const techSigDrawn = await drawSignatureImage(
+    pdfDoc,
+    pdfForm,
+    "Signature2_es_:signer:signature",
+    str(form.technicianSignature),
+  );
+  if (!techSigDrawn) {
+    setText("Signature2_es_:signer:signature", str(form.technicianName));
+  }
 
   pdfForm.flatten();
   const out = await pdfDoc.save();
