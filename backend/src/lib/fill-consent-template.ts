@@ -79,8 +79,7 @@ export async function fillConsentTemplate(form: Record<string, unknown>): Promis
   setText("West NDx Reading", X);
   setText("West NDx Services", X);
 
-  // Patient header
-  setText("Patient Facility Sticker Here  R E Q U I R E D", str(form.patientName));
+  // Patient header — sticker area left blank (filled in by facility)
   setText("Date of Birth", str(form.dateOfBirth));
   setText("Surgeon  Physician Name", str(form.surgeonName));
   setText("Date of Service", str(form.dateOfService));
