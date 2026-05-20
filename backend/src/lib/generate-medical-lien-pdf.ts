@@ -5,10 +5,10 @@ import type { CompanyHeader } from "./load-form-company";
 const PdfPrinter = require("pdfmake/js/Printer").default as new (
   fonts: import("pdfmake/interfaces").TFontDictionary,
   virtualfs?: unknown,
-  urlResolver?: { resolve: (url: string, headers?: Record<string, string>) => string },
+  urlResolver?: { resolve: (url: string, headers?: Record<string, string>) => string; resolved: () => Promise<void> },
   localAccessPolicy?: (path: string) => boolean,
 ) => {
-  createPdfKitDocument(docDefinition: TDocumentDefinitions, options?: Record<string, unknown>): NodeJS.EventEmitter & { end(): void };
+  createPdfKitDocument(docDefinition: TDocumentDefinitions, options?: Record<string, unknown>): Promise<NodeJS.EventEmitter & { end(): void }>;
 };
 
 const fonts = {
@@ -20,7 +20,7 @@ const fonts = {
   },
 };
 
-const urlResolver = { resolve: (url: string) => url };
+const urlResolver = { resolve: (url: string) => url, resolved: () => Promise.resolve() };
 const printer = new PdfPrinter(fonts, undefined, urlResolver);
 
 export async function generateMedicalLienPdf(form: Record<string, unknown>, company?: CompanyHeader): Promise<Buffer> {
@@ -148,8 +148,8 @@ export async function generateMedicalLienPdf(form: Record<string, unknown>, comp
     },
   };
 
+  const doc = await printer.createPdfKitDocument(docDef);
   return new Promise((resolve, reject) => {
-    const doc = printer.createPdfKitDocument(docDef);
     const chunks: Buffer[] = [];
     doc.on("data", (chunk: Buffer) => chunks.push(chunk));
     doc.on("end", () => resolve(Buffer.concat(chunks)));
