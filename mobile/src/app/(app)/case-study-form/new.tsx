@@ -366,7 +366,7 @@ export default function NewCaseStudyFormScreen() {
             <Text style={styles.orgName}>West NDx</Text>
             <Text style={styles.formTitle}>History of Electrodes and Muscles</Text>
             <Text style={styles.formSubtitle}>Intraoperative Monitoring Checklist</Text>
-            {saving ? <Text style={styles.savingText}>Saving...</Text> : null}
+            <Text style={[styles.savingText, !saving && { opacity: 0 }]}>Saving...</Text>
             {isSubmitted ? (
               <View style={styles.submittedBadge}>
                 <Text style={styles.submittedText}>✓ Submitted</Text>

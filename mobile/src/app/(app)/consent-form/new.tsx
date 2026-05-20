@@ -338,7 +338,7 @@ export default function NewConsentFormScreen() {
             <Text style={styles.orgName}>West NDx</Text>
             <Text style={styles.formTitle}>Informed Consent, Assignment of Benefits and Financial Responsibility</Text>
             <Text style={styles.formSubtitle}>Intraoperative Neuromonitoring Services</Text>
-            {saving ? <Text style={styles.savingText}>Saving...</Text> : null}
+            <Text style={[styles.savingText, !saving && { opacity: 0 }]}>Saving...</Text>
             {isSubmitted ? (
               <View style={styles.submittedBadge}>
                 <Text style={styles.submittedText}>✓ Submitted</Text>

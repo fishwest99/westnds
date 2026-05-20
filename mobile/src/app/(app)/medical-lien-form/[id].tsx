@@ -229,7 +229,7 @@ export default function EditMedicalLienFormScreen() {
             <Text style={styles.orgName}>West NDx</Text>
             <Text style={styles.formTitle}>Medical Lien Agreement</Text>
             <Text style={styles.formSubtitle}>Personal Injury Lien for Medical Services</Text>
-            {saving ? <Text style={styles.savingText}>Saving...</Text> : null}
+            <Text style={[styles.savingText, !saving && { opacity: 0 }]}>Saving...</Text>
             {isSubmitted ? (
               <View style={styles.submittedBadge}>
                 <Text style={styles.submittedText}>✓ Submitted</Text>
