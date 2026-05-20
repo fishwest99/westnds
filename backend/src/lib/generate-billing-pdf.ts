@@ -108,13 +108,14 @@ export async function generateBillingFormPdf(form: Record<string, unknown>, comp
       // ── Header Info ─────────────────────────────────────────────────
       {
         table: {
-          widths: ["*", "*", "*", "*"],
+          widths: ["*", "*", "*", "*", "*"],
           body: [
             [
               field("Invoice #", f("invoiceNumber")),
               field("PO #", f("poNumber")),
               field("Patient Name", f("patientName")),
               field("Age", f("age")),
+              { text: "" } as TableCell,
             ] as TableCell[],
             [
               {
@@ -134,6 +135,7 @@ export async function generateBillingFormPdf(form: Record<string, unknown>, comp
               field("Facility", f("facility")),
               field("Date", f("date")),
               field("Procedure", f("procedure")),
+              { text: "" } as TableCell,
             ] as TableCell[],
           ],
         },
