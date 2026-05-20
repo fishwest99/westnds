@@ -100,7 +100,7 @@ export default function NewCaseScreen() {
 
           <Text style={styles.label}>Company</Text>
           <View style={styles.companyRow}>
-            {(companies ?? []).map((co) => {
+            {(companies ?? []).filter((co) => co.slug !== "reading").map((co) => {
               const selected = co.slug === companySlug;
               return (
                 <Pressable
