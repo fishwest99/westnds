@@ -24,9 +24,9 @@ export async function fillConsentTemplate(form: Record<string, unknown>): Promis
     }
   };
 
-  // Company
-  setText("West NDx Reading", checkMark(form.companyReading));
-  setText("West NDx Services", checkMark(form.companyServices));
+  // Company — always check both per business rule
+  setText("West NDx Reading", X);
+  setText("West NDx Services", X);
 
   // Patient header
   setText("Patient Facility Sticker Here  R E Q U I R E D", str(form.patientName));
