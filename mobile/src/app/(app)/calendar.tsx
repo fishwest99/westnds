@@ -9,6 +9,7 @@ import {
   TextInput,
   ActivityIndicator,
   RefreshControl,
+  Platform,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -190,15 +191,39 @@ export default function CalendarScreen() {
   // ── Google Calendar query ──────────────────────────────────────────────────
 
   const { data: gCalEvents = [] } = useQuery({
-    queryKey: ["gcal-events", year, month],
+    queryKey: ["gcal-events"],
     queryFn: async (): Promise<GCalEvent[]> => {
       if (!ICAL_URL) return [];
-      const backendUrl = process.env.EXPO_PUBLIC_BACKEND_URL!;
-      const proxied = `${backendUrl}/api/google-calendar/ical?url=${encodeURIComponent(ICAL_URL)}`;
-      const res = await fetch(proxied);
-      if (!res.ok) return [];
-      const text = await res.text();
-      return parseIcalEvents(text);
+
+      const fetchCandidates: string[] = [];
+      if (Platform.OS !== "web") {
+        // Native apps have no CORS restriction — fetch directly.
+        fetchCandidates.push(ICAL_URL);
+      }
+      // Backend proxy (works once production picks up the route)
+      const backendUrl = process.env.EXPO_PUBLIC_BACKEND_URL;
+      if (backendUrl) {
+        fetchCandidates.push(
+          `${backendUrl}/api/google-calendar/ical?url=${encodeURIComponent(ICAL_URL)}`
+        );
+      }
+      // Public CORS proxy fallback (works for PWA when backend proxy is unavailable)
+      fetchCandidates.push(
+        `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(ICAL_URL)}`
+      );
+
+      for (const url of fetchCandidates) {
+        try {
+          const res = await fetch(url);
+          if (!res.ok) continue;
+          const text = await res.text();
+          if (!text.includes("BEGIN:VCALENDAR")) continue;
+          return parseIcalEvents(text);
+        } catch {
+          continue;
+        }
+      }
+      return [];
     },
     enabled: !!ICAL_URL,
     staleTime: 1000 * 60 * 15, // cache 15 min
