@@ -141,31 +141,23 @@ export async function fillConsentTemplate(form: Record<string, unknown>): Promis
   setText("undefined_9", checkMark(form.ackFinancialResp));
   // undefined_10 left blank — may be the modality "Other" text or similar; awaiting user confirmation
 
-  // Patient signature block — draw image if available, fall back to typed name
-  setText("Patient Name", str(form.patientGuardianName));
+  // Patient signature block — only signature image + date; no typed name
   setText("Date5_es_:signer:date", str(form.patientSignatureDate));
-  const patientSigDrawn = await drawSignatureImage(
+  await drawSignatureImage(
     pdfDoc,
     pdfForm,
     "Signature1_es_:signer:signature",
     str(form.patientSignature),
   );
-  if (!patientSigDrawn) {
-    setText("Signature1_es_:signer:signature", str(form.patientGuardianName));
-  }
 
-  // Technician block — draw image if available, fall back to typed name
-  setText("Technician Name", str(form.technicianName));
+  // Technician block — only signature image + date; no typed name
   setText("Date6_es_:signer:date", str(form.technicianDate));
-  const techSigDrawn = await drawSignatureImage(
+  await drawSignatureImage(
     pdfDoc,
     pdfForm,
     "Signature2_es_:signer:signature",
     str(form.technicianSignature),
   );
-  if (!techSigDrawn) {
-    setText("Signature2_es_:signer:signature", str(form.technicianName));
-  }
 
   pdfForm.flatten();
   const out = await pdfDoc.save();
