@@ -1,6 +1,6 @@
 // Vibecode PWA service worker.
 // Bump CACHE_VERSION to force users onto a fresh cache after a deploy.
-const CACHE_VERSION = "vibecode-v1";
+const CACHE_VERSION = "vibecode-v3";
 
 // Take control as soon as a new service worker is installed.
 self.addEventListener("install", (event) => {
@@ -19,15 +19,21 @@ self.addEventListener("activate", (event) => {
   );
 });
 
-// Network-first for API calls (fresh data), cache-first for static assets (fast loads).
+// Network-first for HTML/API (fresh content), cache-first only for hashed static assets.
 self.addEventListener("fetch", (event) => {
   const { request } = event;
   if (request.method !== "GET") return;
 
   const url = new URL(request.url);
   const isApi = url.pathname.startsWith("/api/");
+  const isHtml =
+    request.mode === "navigate" ||
+    request.destination === "document" ||
+    url.pathname === "/" ||
+    url.pathname.endsWith(".html");
 
-  if (isApi) {
+  // Network-first for API and HTML (so new deploys are picked up immediately).
+  if (isApi || isHtml) {
     event.respondWith(
       fetch(request)
         .then((res) => {
@@ -40,6 +46,7 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
+  // Cache-first for hashed JS/CSS/images (filenames change on each deploy).
   event.respondWith(
     caches.match(request).then(
       (cached) =>
