@@ -468,6 +468,38 @@ export default function CalendarScreen() {
         }
         testID="calendar-scroll"
       >
+        {/* Google Calendar diagnostics (always visible) */}
+        <View style={styles.gcalDiag} testID="gcal-diagnostics">
+          <Text style={styles.gcalDiagTitle}>Google Calendar Status</Text>
+          {!ICAL_URL ? (
+            <Text style={styles.gcalDiagError}>
+              EXPO_PUBLIC_GOOGLE_CALENDAR_ICAL_URL is not set
+            </Text>
+          ) : gCalLoading ? (
+            <Text style={styles.gcalDiagInfo}>Loading…</Text>
+          ) : gCalError ? (
+            <>
+              <Text style={styles.gcalDiagError}>
+                Fetch failed: {(gCalError as Error).message}
+              </Text>
+              <Pressable
+                onPress={() => refetchGCal()}
+                style={styles.gcalDiagBtn}
+                testID="gcal-retry"
+              >
+                <Text style={styles.gcalDiagBtnText}>Retry</Text>
+              </Pressable>
+            </>
+          ) : (
+            <Text style={styles.gcalDiagInfo}>
+              {gCalEvents.length} total events fetched · {upcomingGCalEvents.length} upcoming
+            </Text>
+          )}
+          <Text style={styles.gcalDiagUrl} numberOfLines={2}>
+            URL: {ICAL_URL || "(none)"}
+          </Text>
+        </View>
+
         {/* Month Navigator */}
         <View style={styles.monthNav}>
           <Pressable onPress={prevMonth} style={styles.navBtn} testID="prev-month-button">
@@ -616,37 +648,6 @@ export default function CalendarScreen() {
               );
             })
           )}
-
-          {/* Google Calendar diagnostics */}
-          {!selectedDate ? (
-            <View style={styles.gcalDiag} testID="gcal-diagnostics">
-              <Text style={styles.gcalDiagTitle}>Google Calendar</Text>
-              {!ICAL_URL ? (
-                <Text style={styles.gcalDiagError}>
-                  EXPO_PUBLIC_GOOGLE_CALENDAR_ICAL_URL is not set
-                </Text>
-              ) : gCalLoading ? (
-                <Text style={styles.gcalDiagInfo}>Loading…</Text>
-              ) : gCalError ? (
-                <>
-                  <Text style={styles.gcalDiagError}>
-                    Fetch failed: {(gCalError as Error).message}
-                  </Text>
-                  <Pressable
-                    onPress={() => refetchGCal()}
-                    style={styles.gcalDiagBtn}
-                    testID="gcal-retry"
-                  >
-                    <Text style={styles.gcalDiagBtnText}>Retry</Text>
-                  </Pressable>
-                </>
-              ) : (
-                <Text style={styles.gcalDiagInfo}>
-                  {gCalEvents.length} total events fetched · {upcomingGCalEvents.length} upcoming
-                </Text>
-              )}
-            </View>
-          ) : null}
 
           {/* Upcoming: merge GCal events (no day selected) */}
           {!selectedDate && ICAL_URL && upcomingGCalEvents.length > 0 ? (
@@ -1072,6 +1073,12 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontWeight: "600",
     fontSize: 13,
+  },
+  gcalDiagUrl: {
+    marginTop: 6,
+    fontSize: 10,
+    color: "#4b5563",
+    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
   },
   gcalDot: {
     width: 6,
