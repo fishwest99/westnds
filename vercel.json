@@ -1,0 +1,6 @@
+{
+  "buildCommand": "cd mobile && bun install && bunx expo export --platform web",
+  "outputDirectory": "mobile/dist",
+  "installCommand": "echo skip-root-install",
+  "framework": null
+}
