@@ -15,13 +15,17 @@ SplashScreen.preventAutoHideAsync();
 const queryClient = new QueryClient();
 
 function RootLayoutNav({ colorScheme }: { colorScheme: 'light' | 'dark' | null | undefined }) {
+  const { data: session, isLoading } = useSession();
+
+  if (isLoading) return null;
+
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Protected guard={true}>
+        <Stack.Protected guard={!!session?.user}>
           <Stack.Screen name="(app)" />
         </Stack.Protected>
-        <Stack.Protected guard={false}>
+        <Stack.Protected guard={!session?.user}>
           <Stack.Screen name="sign-in" />
         </Stack.Protected>
         <Stack.Screen name="+not-found" />
