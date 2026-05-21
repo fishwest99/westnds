@@ -190,43 +190,61 @@ export default function CalendarScreen() {
 
   // ── Google Calendar query ──────────────────────────────────────────────────
 
-  const { data: gCalEvents = [] } = useQuery({
+  const {
+    data: gCalEvents = [],
+    isLoading: gCalLoading,
+    error: gCalError,
+    refetch: refetchGCal,
+  } = useQuery({
     queryKey: ["gcal-events"],
     queryFn: async (): Promise<GCalEvent[]> => {
-      if (!ICAL_URL) return [];
+      console.log("[gcal] ICAL_URL =", ICAL_URL || "(empty)");
+      if (!ICAL_URL) throw new Error("EXPO_PUBLIC_GOOGLE_CALENDAR_ICAL_URL not set");
 
       const fetchCandidates: string[] = [];
       if (Platform.OS !== "web") {
-        // Native apps have no CORS restriction — fetch directly.
         fetchCandidates.push(ICAL_URL);
       }
-      // Backend proxy (works once production picks up the route)
       const backendUrl = process.env.EXPO_PUBLIC_BACKEND_URL;
       if (backendUrl) {
         fetchCandidates.push(
           `${backendUrl}/api/google-calendar/ical?url=${encodeURIComponent(ICAL_URL)}`
         );
       }
-      // Public CORS proxy fallback (works for PWA when backend proxy is unavailable)
       fetchCandidates.push(
         `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(ICAL_URL)}`
       );
 
+      const attempts: string[] = [];
       for (const url of fetchCandidates) {
         try {
+          console.log("[gcal] fetching:", url);
           const res = await fetch(url);
-          if (!res.ok) continue;
+          if (!res.ok) {
+            attempts.push(`${url} → HTTP ${res.status}`);
+            console.log("[gcal] HTTP", res.status, "for", url);
+            continue;
+          }
           const text = await res.text();
-          if (!text.includes("BEGIN:VCALENDAR")) continue;
-          return parseIcalEvents(text);
-        } catch {
+          if (!text.includes("BEGIN:VCALENDAR")) {
+            attempts.push(`${url} → not iCal (${text.length} bytes)`);
+            console.log("[gcal] not iCal body for", url);
+            continue;
+          }
+          const parsed = parseIcalEvents(text);
+          console.log("[gcal] parsed", parsed.length, "events from", url);
+          return parsed;
+        } catch (e) {
+          attempts.push(`${url} → ${(e as Error).message}`);
+          console.log("[gcal] fetch error for", url, e);
           continue;
         }
       }
-      return [];
+      throw new Error("All fetch attempts failed:\n" + attempts.join("\n"));
     },
     enabled: !!ICAL_URL,
-    staleTime: 1000 * 60 * 15, // cache 15 min
+    staleTime: 1000 * 60 * 15,
+    retry: 1,
   });
 
   // Filter GCal events to current month
@@ -598,6 +616,37 @@ export default function CalendarScreen() {
               );
             })
           )}
+
+          {/* Google Calendar diagnostics */}
+          {!selectedDate ? (
+            <View style={styles.gcalDiag} testID="gcal-diagnostics">
+              <Text style={styles.gcalDiagTitle}>Google Calendar</Text>
+              {!ICAL_URL ? (
+                <Text style={styles.gcalDiagError}>
+                  EXPO_PUBLIC_GOOGLE_CALENDAR_ICAL_URL is not set
+                </Text>
+              ) : gCalLoading ? (
+                <Text style={styles.gcalDiagInfo}>Loading…</Text>
+              ) : gCalError ? (
+                <>
+                  <Text style={styles.gcalDiagError}>
+                    Fetch failed: {(gCalError as Error).message}
+                  </Text>
+                  <Pressable
+                    onPress={() => refetchGCal()}
+                    style={styles.gcalDiagBtn}
+                    testID="gcal-retry"
+                  >
+                    <Text style={styles.gcalDiagBtnText}>Retry</Text>
+                  </Pressable>
+                </>
+              ) : (
+                <Text style={styles.gcalDiagInfo}>
+                  {gCalEvents.length} total events fetched · {upcomingGCalEvents.length} upcoming
+                </Text>
+              )}
+            </View>
+          ) : null}
 
           {/* Upcoming: merge GCal events (no day selected) */}
           {!selectedDate && ICAL_URL && upcomingGCalEvents.length > 0 ? (
@@ -986,6 +1035,43 @@ const styles = StyleSheet.create({
     letterSpacing: 0.6,
     marginTop: 12,
     marginBottom: 6,
+  },
+  gcalDiag: {
+    backgroundColor: "#f0fdf4",
+    borderWidth: 1,
+    borderColor: "#bbf7d0",
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 12,
+  },
+  gcalDiagTitle: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#166534",
+    textTransform: "uppercase",
+    letterSpacing: 0.6,
+    marginBottom: 4,
+  },
+  gcalDiagInfo: {
+    fontSize: 13,
+    color: "#166534",
+  },
+  gcalDiagError: {
+    fontSize: 13,
+    color: "#991b1b",
+  },
+  gcalDiagBtn: {
+    marginTop: 8,
+    alignSelf: "flex-start",
+    backgroundColor: "#16a34a",
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  gcalDiagBtnText: {
+    color: "#fff",
+    fontWeight: "600",
+    fontSize: 13,
   },
   gcalDot: {
     width: 6,
