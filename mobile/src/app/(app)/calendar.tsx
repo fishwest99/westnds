@@ -33,7 +33,11 @@ type GCalEvent = {
 };
 
 function unfoldIcal(raw: string): string {
-  return raw.replace(/\r\n[ \t]/g, "").replace(/\n[ \t]/g, "");
+  // Normalize CRLF/CR to LF so single-line regexes work, then unfold continuation lines.
+  return raw
+    .replace(/\r\n/g, "\n")
+    .replace(/\r/g, "\n")
+    .replace(/\n[ \t]/g, "");
 }
 
 function parseIcalDate(val: string): { date: string; time: string; allDay: boolean } {
