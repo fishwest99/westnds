@@ -182,15 +182,17 @@ export default function SignIn() {
             />
           </View>
           <Pressable
-            style={({ pressed }) => [styles.button, pressed && { opacity: 0.85 }]}
+            style={styles.button}
             onPress={handleSubmit}
             disabled={loading}
             testID="submit-button"
+            accessibilityRole="button"
+            accessibilityLabel={mode === "signin" ? "Sign In" : "Create Account"}
           >
             {loading ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text style={styles.buttonText}>{mode === "signin" ? "Sign In" : "Create Account"}</Text>
+              <Text style={styles.buttonText}>{mode === "signin" ? "SIGN IN" : "CREATE ACCOUNT"}</Text>
             )}
           </Pressable>
           <Pressable
@@ -212,7 +214,7 @@ export default function SignIn() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#f0f4f8" },
-  scroll: { flexGrow: 1, justifyContent: "center", padding: 24, paddingBottom: 80 },
+  scroll: { flexGrow: 1, padding: 24, paddingTop: 40, paddingBottom: 120 },
   header: { alignItems: "center", marginBottom: 32 },
   logo: { fontSize: 32, fontWeight: "700", color: "#1a365d", letterSpacing: 1 },
   subtitle: { fontSize: 14, color: "#4a5568", marginTop: 4 },
@@ -221,8 +223,18 @@ const styles = StyleSheet.create({
   field: { marginBottom: 16 },
   label: { fontSize: 13, fontWeight: "600", color: "#4a5568", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 },
   input: { borderWidth: 1, borderColor: "#e2e8f0", borderRadius: 10, padding: 14, fontSize: 16, backgroundColor: "#f8fafc", color: "#1a202c" },
-  button: { backgroundColor: "#2b6cb0", borderRadius: 10, padding: 16, alignItems: "center", marginTop: 8 },
-  buttonText: { color: "#fff", fontSize: 16, fontWeight: "700" },
+  button: {
+    backgroundColor: "#2b6cb0",
+    borderRadius: 10,
+    paddingVertical: 18,
+    paddingHorizontal: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 16,
+    minHeight: 56,
+    width: "100%",
+  },
+  buttonText: { color: "#fff", fontSize: 17, fontWeight: "700", letterSpacing: 0.5 },
   toggle: { marginTop: 16, alignItems: "center" },
   toggleText: { fontSize: 14, color: "#718096" },
   toggleLink: { color: "#2b6cb0", fontWeight: "600" },
