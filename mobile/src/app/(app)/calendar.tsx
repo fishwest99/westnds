@@ -19,6 +19,7 @@ import { api } from "@/lib/api/api";
 // ─── Google Calendar iCal ─────────────────────────────────────────────────────
 
 const ICAL_URL = process.env.EXPO_PUBLIC_GOOGLE_CALENDAR_ICAL_URL ?? "";
+const BUILD_STAMP = "2026-05-23-v2";
 
 type GCalEvent = {
   uid: string;
@@ -483,6 +484,38 @@ export default function CalendarScreen() {
         </Pressable>
       </View>
 
+      {/* Google Calendar diagnostics — pinned above the scroll so it's always visible */}
+      <View style={styles.gcalDiag} testID="gcal-diagnostics">
+        <Text style={styles.gcalDiagTitle}>Google Calendar Status (build {BUILD_STAMP})</Text>
+        {!ICAL_URL ? (
+          <Text style={styles.gcalDiagError}>
+            EXPO_PUBLIC_GOOGLE_CALENDAR_ICAL_URL is not set
+          </Text>
+        ) : gCalLoading ? (
+          <Text style={styles.gcalDiagInfo}>Loading…</Text>
+        ) : gCalError ? (
+          <>
+            <Text style={styles.gcalDiagError} numberOfLines={6}>
+              Fetch failed: {(gCalError as Error).message}
+            </Text>
+            <Pressable
+              onPress={() => refetchGCal()}
+              style={styles.gcalDiagBtn}
+              testID="gcal-retry"
+            >
+              <Text style={styles.gcalDiagBtnText}>Retry</Text>
+            </Pressable>
+          </>
+        ) : (
+          <Text style={styles.gcalDiagInfo}>
+            {gCalEvents.length} total events fetched · {upcomingGCalEvents.length} upcoming
+          </Text>
+        )}
+        <Text style={styles.gcalDiagUrl} numberOfLines={2}>
+          Platform: {Platform.OS} · Backend: {process.env.EXPO_PUBLIC_BACKEND_URL ? "yes" : "no"}
+        </Text>
+      </View>
+
       <ScrollView
         style={styles.scrollArea}
         showsVerticalScrollIndicator={false}
@@ -491,37 +524,6 @@ export default function CalendarScreen() {
         }
         testID="calendar-scroll"
       >
-        {/* Google Calendar diagnostics (always visible) */}
-        <View style={styles.gcalDiag} testID="gcal-diagnostics">
-          <Text style={styles.gcalDiagTitle}>Google Calendar Status</Text>
-          {!ICAL_URL ? (
-            <Text style={styles.gcalDiagError}>
-              EXPO_PUBLIC_GOOGLE_CALENDAR_ICAL_URL is not set
-            </Text>
-          ) : gCalLoading ? (
-            <Text style={styles.gcalDiagInfo}>Loading…</Text>
-          ) : gCalError ? (
-            <>
-              <Text style={styles.gcalDiagError}>
-                Fetch failed: {(gCalError as Error).message}
-              </Text>
-              <Pressable
-                onPress={() => refetchGCal()}
-                style={styles.gcalDiagBtn}
-                testID="gcal-retry"
-              >
-                <Text style={styles.gcalDiagBtnText}>Retry</Text>
-              </Pressable>
-            </>
-          ) : (
-            <Text style={styles.gcalDiagInfo}>
-              {gCalEvents.length} total events fetched · {upcomingGCalEvents.length} upcoming
-            </Text>
-          )}
-          <Text style={styles.gcalDiagUrl} numberOfLines={2}>
-            URL: {ICAL_URL || "(none)"}
-          </Text>
-        </View>
 
         {/* Month Navigator */}
         <View style={styles.monthNav}>
