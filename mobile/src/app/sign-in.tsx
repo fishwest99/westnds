@@ -3,6 +3,7 @@ import {
   View, Text, TextInput, Pressable, StyleSheet,
   KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator, Alert,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { authClient } from "@/lib/auth/auth-client";
 import { useInvalidateSession } from "@/lib/auth/use-session";
 import { api } from "@/lib/api/api";
@@ -77,8 +78,16 @@ export default function SignIn() {
   };
 
   return (
-    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === "ios" ? "padding" : undefined}>
-      <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+    <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+      >
+        <ScrollView
+          contentContainerStyle={styles.scroll}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
         <View style={styles.header}>
           <Text style={styles.logo}>West NDx</Text>
           <Text style={styles.subtitle}>Intraoperative Neuromonitoring</Text>
@@ -195,14 +204,15 @@ export default function SignIn() {
             </Text>
           </Pressable>
         </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#f0f4f8" },
-  scroll: { flexGrow: 1, justifyContent: "center", padding: 24 },
+  scroll: { flexGrow: 1, justifyContent: "center", padding: 24, paddingBottom: 80 },
   header: { alignItems: "center", marginBottom: 32 },
   logo: { fontSize: 32, fontWeight: "700", color: "#1a365d", letterSpacing: 1 },
   subtitle: { fontSize: 14, color: "#4a5568", marginTop: 4 },
