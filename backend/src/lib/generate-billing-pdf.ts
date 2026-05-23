@@ -92,37 +92,47 @@ export async function generateBillingFormPdf(
   setText("Date_2", str("technicianSignatureDate"));
   setText("Date_3", str("rnSignatureDate"));
 
-  // ── Signatures — embed PNG image over the signature field area
-  const drawSignature = async (fieldName: string, dataUri: string) => {
-    if (!dataUri || !dataUri.startsWith("data:image/png")) return;
+  // ── Capture signature field positions BEFORE flatten (fields gone after)
+  const captureRect = (fieldName: string): { x: number; y: number; width: number; height: number } | null => {
     try {
       const field = pdfForm.getField(fieldName);
-      const widgets = field.acroField.getWidgets();
-      const widget = widgets[0];
-      if (!widget) return;
-      const rect = widget.getRectangle();
+      const widget = field.acroField.getWidgets()[0];
+      if (!widget) return null;
+      return widget.getRectangle();
+    } catch {
+      return null;
+    }
+  };
+  const techRect = captureRect("Signature1_es_:signer:signature");
+  const rnRect = captureRect("Signature2_es_:signer:signature");
+
+  // Flatten so the emailed PDF is read-only and renders cleanly in all viewers
+  pdfForm.flatten();
+
+  // ── Draw signature PNGs on top of the (now-flat) signature lines
+  const drawSignature = async (
+    rect: { x: number; y: number; width: number; height: number } | null,
+    dataUri: string,
+  ) => {
+    if (!rect || !dataUri || !dataUri.startsWith("data:image/png")) return;
+    try {
       const base64 = dataUri.replace(/^data:image\/png;base64,/, "");
       const bytes = Buffer.from(base64, "base64");
       const image = await pdfDoc.embedPng(bytes);
       const page = pdfDoc.getPage(0);
-      const drawHeight = rect.height + 14;
       page.drawImage(image, {
         x: rect.x + 2,
         y: rect.y - 4,
         width: rect.width - 4,
-        height: drawHeight,
+        height: rect.height + 14,
       });
-      pdfForm.removeField(field);
     } catch {
-      // ignore — leave field empty if embed fails
+      // ignore — leave blank if embed fails
     }
   };
 
-  await drawSignature("Signature1_es_:signer:signature", str("technicianSignature"));
-  await drawSignature("Signature2_es_:signer:signature", str("rnSignature"));
-
-  // Flatten so the emailed PDF is read-only and renders cleanly in all viewers
-  pdfForm.flatten();
+  await drawSignature(techRect, str("technicianSignature"));
+  await drawSignature(rnRect, str("rnSignature"));
 
   const out = await pdfDoc.save();
   return Buffer.from(out);
