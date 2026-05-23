@@ -203,27 +203,45 @@ export default function CalendarScreen() {
     queryKey: ["gcal-events"],
     queryFn: async (): Promise<GCalEvent[]> => {
       console.log("[gcal] ICAL_URL =", ICAL_URL || "(empty)");
+      console.log("[gcal] Platform.OS =", Platform.OS);
+      console.log("[gcal] EXPO_PUBLIC_BACKEND_URL =", process.env.EXPO_PUBLIC_BACKEND_URL || "(empty)");
       if (!ICAL_URL) throw new Error("EXPO_PUBLIC_GOOGLE_CALENDAR_ICAL_URL not set");
 
       const fetchCandidates: string[] = [];
-      if (Platform.OS !== "web") {
-        fetchCandidates.push(ICAL_URL);
-      }
+      // Backend proxy first — most reliable, has proper CORS.
       const backendUrl = process.env.EXPO_PUBLIC_BACKEND_URL;
       if (backendUrl) {
         fetchCandidates.push(
           `${backendUrl}/api/google-calendar/ical?url=${encodeURIComponent(ICAL_URL)}`
         );
       }
+      // Native (iOS/Android) can hit Google directly — no CORS.
+      if (Platform.OS !== "web") {
+        fetchCandidates.push(ICAL_URL);
+      }
+      // Public proxy fallbacks (in case backend is down / blocked).
       fetchCandidates.push(
-        `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(ICAL_URL)}`
+        `https://api.codetabs.com/v1/proxy/?quest=${encodeURIComponent(ICAL_URL)}`
+      );
+      fetchCandidates.push(
+        `https://api.allorigins.win/raw?url=${encodeURIComponent(ICAL_URL)}`
       );
 
       const attempts: string[] = [];
+      const fetchWithTimeout = async (url: string, ms: number): Promise<Response> => {
+        const ctrl = new AbortController();
+        const timer = setTimeout(() => ctrl.abort(), ms);
+        try {
+          return await fetch(url, { signal: ctrl.signal, cache: "no-store" });
+        } finally {
+          clearTimeout(timer);
+        }
+      };
+
       for (const url of fetchCandidates) {
         try {
           console.log("[gcal] fetching:", url);
-          const res = await fetch(url);
+          const res = await fetchWithTimeout(url, 12000);
           if (!res.ok) {
             attempts.push(`${url} → HTTP ${res.status}`);
             console.log("[gcal] HTTP", res.status, "for", url);
@@ -232,7 +250,7 @@ export default function CalendarScreen() {
           const text = await res.text();
           if (!text.includes("BEGIN:VCALENDAR")) {
             attempts.push(`${url} → not iCal (${text.length} bytes)`);
-            console.log("[gcal] not iCal body for", url);
+            console.log("[gcal] not iCal body for", url, "first 200:", text.slice(0, 200));
             continue;
           }
           const parsed = parseIcalEvents(text);
@@ -248,7 +266,8 @@ export default function CalendarScreen() {
     },
     enabled: !!ICAL_URL,
     staleTime: 1000 * 60 * 15,
-    retry: 1,
+    retry: 2,
+    retryDelay: 1000,
   });
 
   // Filter GCal events to current month
