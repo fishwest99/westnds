@@ -571,7 +571,7 @@ export default function NewBillingFormScreen() {
               value={form.cptCranialBilateral} onChange={(v) => update("cptCranialBilateral", v)}
             />
             <ModalityRow
-              label="Electrocorticography" cptCode="95955"
+              label="Electrocorticography" cptCode="95829"
               value={form.cptElectrocorticography} onChange={(v) => update("cptElectrocorticography", v)}
             />
             <ModalityRow

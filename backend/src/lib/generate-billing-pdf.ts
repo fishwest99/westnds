@@ -51,22 +51,22 @@ export async function generateBillingFormPdf(form: Record<string, unknown>, comp
 
   const evokedRows = cptRows([
     ["95930 — Visual EP", "cptVisual"],
-    ["95938 — Auditory EP", "cptAuditory"],
+    ["92585 — Auditory EP", "cptAuditory"],
     ["95938 — Upper Extremities SSEP", "cptUpperExtremities"],
     ["95938 — Lower Extremities SSEP", "cptLowerExtremities"],
     ["95939 — Upper Motor EP (TcMEP)", "cptUpperMotorEP"],
     ["95939 — Lower Motor EP (TcMEP)", "cptLowerMotorEP"],
-    ["95941 — RLN Monitoring", "cptRLNMonitoring"],
+    ["95870 — RLN Monitoring", "cptRLNMonitoring"],
   ], f, true);
 
   const emgRows = cptRows([
-    ["95907 — 2 Ext. EMG", "cptTwoExtEMG"],
-    ["95908 — 4 Ext. EMG", "cptFourExtEMG"],
-    ["92585 — Cranial (Unilateral)", "cptCranialUnilateral"],
-    ["92586 — Cranial (Bilateral)", "cptCranialBilateral"],
-    ["95955 — Electrocorticography", "cptElectrocorticography"],
+    ["95861 — 2 Ext. EMG", "cptTwoExtEMG"],
+    ["95864 — 4 Ext. EMG", "cptFourExtEMG"],
+    ["95870 — Cranial (Unilateral)", "cptCranialUnilateral"],
+    ["95870 — Cranial (Bilateral)", "cptCranialBilateral"],
+    ["95829 — Electrocorticography", "cptElectrocorticography"],
     ["Stat Fee", "cptStatFee"],
-    [`95940 — Standby (${f("standbyHours") || "0"} hrs)`, "cptStandby"],
+    [`Standby (${f("standbyHours") || "0"} hrs)`, "cptStandby"],
   ], f, true);
 
   const techSig = f("technicianSignature");
@@ -202,7 +202,7 @@ export async function generateBillingFormPdf(form: Record<string, unknown>, comp
             ],
             ...cptRows([
               ["95955 — Electroencephalography (Continuous EEG)", "cptEEG"],
-              ["Motor Evoked Potentials", "flatFeeMEP"],
+              ["Motor Evoked Potential / Craniotomy with EEG (FLAT FEE)", "flatFeeMEP"],
             ], f, true),
             [
               { text: "Baseline", bold: true } as TableCell,
@@ -272,7 +272,7 @@ export async function generateBillingFormPdf(form: Record<string, unknown>, comp
               {} as TableCell, {} as TableCell, {} as TableCell, {} as TableCell,
             ],
             [
-              { text: "Total Hours", bold: true } as TableCell,
+              { text: "Total Hours (95940/95941/G0453)", bold: true } as TableCell,
               { text: f("totalHours"), alignment: "center" as const } as TableCell,
               { text: "Computer Used", bold: true } as TableCell,
               { text: f("computerUsed"), alignment: "center" as const } as TableCell,
