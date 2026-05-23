@@ -187,6 +187,26 @@ export async function generateCaseStudyFormPdf(
 
   const page = pdfDoc.getPage(0);
 
+  // Cover the "(Circle the completed procedures)" subtitle baked into the
+  // template and replace it with "(Highlight the completed procedures)" so the
+  // instruction matches what the app actually does (yellow highlighting, not
+  // hand-circling).
+  page.drawRectangle({
+    x: 232,
+    y: 682,
+    width: 152,
+    height: 12,
+    color: rgb(1, 1, 1),
+    borderWidth: 0,
+  });
+  page.drawText("(Highlight the completed procedures)", {
+    x: 232,
+    y: 685.56,
+    size: 8,
+    font: helvNormal,
+    color: rgb(0, 0, 0),
+  });
+
   // Yellow highlighter over every selected label on the template.
   const unmapped: string[] = [];
   const mark = (
