@@ -1,346 +1,129 @@
-import type { TDocumentDefinitions, Content, TableCell } from "pdfmake/interfaces";
+import * as fs from "fs";
+import * as path from "path";
+import { PDFDocument } from "pdf-lib";
 import type { CompanyHeader } from "./load-form-company";
 
-// pdfmake's @types package only covers the browser API; use a require for server-side PdfPrinter
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const PdfPrinter = require("pdfmake/js/Printer").default as new (
-  fonts: import("pdfmake/interfaces").TFontDictionary,
-  virtualfs?: unknown,
-  urlResolver?: { resolve: (url: string, headers?: Record<string, string>) => string; resolved: () => Promise<void> },
-  localAccessPolicy?: (path: string) => boolean,
-) => {
-  createPdfKitDocument(docDefinition: TDocumentDefinitions, options?: Record<string, unknown>): Promise<NodeJS.EventEmitter & { end(): void }>;
-};
+const TEMPLATE_PATH = path.join(__dirname, "..", "assets", "billing-sheet-template.pdf");
 
-const fonts = {
-  Helvetica: {
-    normal: "Helvetica",
-    bold: "Helvetica-Bold",
-    italics: "Helvetica-Oblique",
-    bolditalics: "Helvetica-BoldOblique",
-  },
-};
-
-const urlResolver = { resolve: (url: string) => url, resolved: () => Promise.resolve() };
-const printer = new PdfPrinter(fonts, undefined, urlResolver);
-
-function field(label: string, value: string): Content {
-  return { text: [{ text: `${label}: `, bold: true }, value] };
-}
-
-function cptRows(entries: [string, string][], f: (key: string) => string, yesNo = false): TableCell[][] {
-  return entries.map(([label, key]) => {
-    const raw = f(key);
-    const display = yesNo ? (raw === "yes" ? "Yes" : "No") : raw;
-    return [
-      { text: label } as TableCell,
-      { text: display, alignment: "center" as const } as TableCell,
-    ];
-  });
-}
-
-export async function generateBillingFormPdf(form: Record<string, unknown>, company?: CompanyHeader): Promise<Buffer> {
-  const f = (key: string): string => String(form[key] ?? "");
-  const b = (key: string): boolean => Boolean(form[key]);
-  const co: CompanyHeader = company ?? { name: "", address: "", phone: "", fax: "", ein: "" };
-  const contactLine = [
-    co.phone ? `Phone: ${co.phone}` : "",
-    co.fax ? `Fax: ${co.fax}` : "",
-    co.ein ? `EIN # ${co.ein}` : "",
-  ].filter(Boolean).join("    ");
-
-  const evokedRows = cptRows([
-    ["95930 — Visual EP", "cptVisual"],
-    ["92585 — Auditory EP", "cptAuditory"],
-    ["95938 — Upper Extremities SSEP", "cptUpperExtremities"],
-    ["95938 — Lower Extremities SSEP", "cptLowerExtremities"],
-    ["95939 — Upper Motor EP (TcMEP)", "cptUpperMotorEP"],
-    ["95939 — Lower Motor EP (TcMEP)", "cptLowerMotorEP"],
-    ["95870 — RLN Monitoring", "cptRLNMonitoring"],
-  ], f, true);
-
-  const emgRows = cptRows([
-    ["95861 — 2 Ext. EMG", "cptTwoExtEMG"],
-    ["95864 — 4 Ext. EMG", "cptFourExtEMG"],
-    ["95870 — Cranial (Unilateral)", "cptCranialUnilateral"],
-    ["95870 — Cranial (Bilateral)", "cptCranialBilateral"],
-    ["95829 — Electrocorticography", "cptElectrocorticography"],
-    ["Stat Fee", "cptStatFee"],
-    [`Standby (${f("standbyHours") || "0"} hrs)`, "cptStandby"],
-  ], f, true);
-
-  const techSig = f("technicianSignature");
-  const rnSig = f("rnSignature");
-
-  const techSigCell: Content = techSig.startsWith("data:image")
-    ? { stack: [{ text: "Technician Signature:", bold: true, marginBottom: 2 }, { image: techSig, width: 140, height: 45 }] }
-    : { text: "" };
-
-  const rnSigCell: Content = rnSig.startsWith("data:image")
-    ? { stack: [{ text: "RN Signature:", bold: true, marginBottom: 2 }, { image: rnSig, width: 140, height: 45 }] }
-    : { text: "" };
-
-  const docDef: TDocumentDefinitions = {
-    defaultStyle: { font: "Helvetica", fontSize: 8.5 },
-    pageMargins: [36, 50, 36, 50],
-    content: [
-      // ── Company Header ──────────────────────────────────────────────
-      {
-        columns: [
-          {
-            width: "*",
-            stack: [
-              { text: co.name || " ", style: "companyName" },
-              { text: co.address || " ", style: "companyAddress" },
-              { text: contactLine || " ", style: "companyAddress" },
-            ],
-          },
-          {
-            width: "auto",
-            stack: [{ text: "BILLING SHEET", style: "docTitle" }],
-            alignment: "right" as const,
-          },
-        ],
-        marginBottom: 6,
-      } as Content,
-      { canvas: [{ type: "line", x1: 0, y1: 0, x2: 523, y2: 0, lineWidth: 1.5, lineColor: "#1a365d" }], marginBottom: 8 },
-
-      // ── Header Info ─────────────────────────────────────────────────
-      {
-        table: {
-          widths: ["*", "*", "*", "*", "*"],
-          body: [
-            [
-              field("Invoice #", f("invoiceNumber")),
-              field("PO #", f("poNumber")),
-              field("Patient Name", f("patientName")),
-              field("Age", f("age")),
-              { text: "" } as TableCell,
-            ] as TableCell[],
-            [
-              {
-                text: [
-                  { text: "Gender: ", bold: true },
-                  b("genderMale") ? "☑ Male  " : "☐ Male  ",
-                  b("genderFemale") ? "☑ Female" : "☐ Female",
-                ],
-              } as TableCell,
-              field("Referring Doctor", f("referringDoctor")) as TableCell,
-              field("Room #", f("roomNumber")) as TableCell,
-              field("Patient Acct #", f("patientAcctNumber")) as TableCell,
-              field("Patient MRN", f("patientMRN")) as TableCell,
-            ] as TableCell[],
-            [
-              field("Tech Name", f("techName")),
-              field("Facility", f("facility")),
-              field("Date", f("date")),
-              field("Procedure", f("procedure")),
-              { text: "" } as TableCell,
-            ] as TableCell[],
-          ],
-        },
-        layout: "lightHorizontalLines",
-        marginBottom: 10,
-      } as Content,
-
-      // ── CPT Codes — two panels side by side ──────────────────────────
-      {
-        columns: [
-          {
-            width: "48%",
-            table: {
-              widths: ["*", 40],
-              body: [
-                [
-                  { text: "Evoked Potentials", style: "sectionHeader", colSpan: 2, alignment: "center" as const } as TableCell,
-                  {} as TableCell,
-                ],
-                [
-                  { text: "CPT Code / Description", bold: true } as TableCell,
-                  { text: "Used", bold: true, alignment: "center" as const } as TableCell,
-                ],
-                ...evokedRows,
-              ],
-            },
-            layout: "lightHorizontalLines",
-          },
-          { width: "4%", text: "" },
-          {
-            width: "48%",
-            table: {
-              widths: ["*", 40],
-              body: [
-                [
-                  { text: "EMG / Nerve Conduction", style: "sectionHeader", colSpan: 2, alignment: "center" as const } as TableCell,
-                  {} as TableCell,
-                ],
-                [
-                  { text: "CPT Code / Description", bold: true } as TableCell,
-                  { text: "Used", bold: true, alignment: "center" as const } as TableCell,
-                ],
-                ...emgRows,
-              ],
-            },
-            layout: "lightHorizontalLines",
-          },
-        ],
-        marginBottom: 10,
-      } as Content,
-
-      // ── EEG & MEP Monitoring ─────────────────────────────────────────
-      {
-        table: {
-          widths: ["*", 40],
-          body: [
-            [
-              { text: "EEG & MEP Monitoring", style: "sectionHeader", colSpan: 2, alignment: "center" as const } as TableCell,
-              {} as TableCell,
-            ],
-            [
-              { text: "CPT Code / Description", bold: true } as TableCell,
-              { text: "Used", bold: true, alignment: "center" as const } as TableCell,
-            ],
-            ...cptRows([
-              ["95955 — Electroencephalography (Continuous EEG)", "cptEEG"],
-              ["Motor Evoked Potential / Craniotomy with EEG (FLAT FEE)", "flatFeeMEP"],
-            ], f, true),
-            [
-              { text: "Baseline", bold: true } as TableCell,
-              { text: f("baseline"), alignment: "center" as const } as TableCell,
-            ],
-          ],
-        },
-        layout: "lightHorizontalLines",
-        marginBottom: 10,
-      } as Content,
-
-      // ── Timing & Equipment ───────────────────────────────────────────
-      {
-        table: {
-          widths: ["*", 60, "*", 60, "*", 60],
-          body: [
-            [
-              { text: "Timing & Equipment", style: "sectionHeader", colSpan: 6, alignment: "center" as const } as TableCell,
-              {} as TableCell, {} as TableCell, {} as TableCell, {} as TableCell, {} as TableCell,
-            ],
-            [
-              { text: "Start Time", bold: true } as TableCell,
-              { text: f("startTime"), alignment: "center" as const } as TableCell,
-              { text: "End Time", bold: true } as TableCell,
-              { text: f("endTime"), alignment: "center" as const } as TableCell,
-              { text: "Electrodes Used", bold: true } as TableCell,
-              { text: f("electrodesUsed"), alignment: "center" as const } as TableCell,
-            ],
-            [
-              { text: "Thyroid Kit", bold: true } as TableCell,
-              { text: f("thyroidKit"), alignment: "center" as const } as TableCell,
-              { text: "SSEP/EMG", bold: true } as TableCell,
-              { text: f("ssepEMG"), alignment: "center" as const } as TableCell,
-              { text: "Fluobeam", bold: true } as TableCell,
-              { text: f("fluobeam"), alignment: "center" as const } as TableCell,
-            ],
-            [
-              { text: "Needles Used", bold: true } as TableCell,
-              { text: f("needlesUsed"), alignment: "center" as const } as TableCell,
-              { text: "Needles Removed", bold: true } as TableCell,
-              { text: f("needlesRemoved"), alignment: "center" as const } as TableCell,
-              { text: "Driving Time (min)", bold: true } as TableCell,
-              { text: f("drivingTime"), alignment: "center" as const } as TableCell,
-            ],
-            [
-              { text: "Pedicle Probe", bold: true } as TableCell,
-              { text: f("pedicleProbe") === "yes" ? "Yes" : "No", alignment: "center" as const } as TableCell,
-              { text: "Pedicle Probe Qty", bold: true } as TableCell,
-              { text: f("pedicleProbeQty"), alignment: "center" as const } as TableCell,
-              { text: "" } as TableCell,
-              { text: "" } as TableCell,
-            ],
-          ],
-        },
-        layout: "lightHorizontalLines",
-        marginBottom: 10,
-      } as Content,
-
-      // ── Summary ──────────────────────────────────────────────────────
-      {
-        table: {
-          widths: ["*", 80, "*", 80, "*", 80, "*", 80],
-          body: [
-            [
-              { text: "Summary", style: "sectionHeader", colSpan: 8, alignment: "center" as const } as TableCell,
-              {} as TableCell, {} as TableCell, {} as TableCell,
-              {} as TableCell, {} as TableCell, {} as TableCell, {} as TableCell,
-            ],
-            [
-              { text: "Total Hours (95940/95941/G0453)", bold: true } as TableCell,
-              { text: f("totalHours"), alignment: "center" as const } as TableCell,
-              { text: "Computer Used", bold: true } as TableCell,
-              { text: f("computerUsed"), alignment: "center" as const } as TableCell,
-              { text: "Cancellation", bold: true } as TableCell,
-              { text: f("cancellation"), alignment: "center" as const } as TableCell,
-              { text: "Neurologist", bold: true } as TableCell,
-              { text: f("neurologist"), alignment: "center" as const } as TableCell,
-            ],
-          ],
-        },
-        layout: "lightHorizontalLines",
-        marginBottom: 12,
-      } as Content,
-
-      // ── Signatures ───────────────────────────────────────────────────
-      {
-        table: {
-          widths: ["*", "*", 90],
-          body: [
-            [
-              {
-                text: [
-                  { text: "Technician Signature: ", bold: true },
-                  techSig ? "" : "___________________",
-                ],
-              } as TableCell,
-              techSigCell as TableCell,
-              { text: [{ text: "Date: ", bold: true }, f("technicianSignatureDate")] } as TableCell,
-            ],
-          ],
-        },
-        layout: "lightHorizontalLines",
-        marginBottom: 6,
-      } as Content,
-      {
-        table: {
-          widths: ["*", "*", 90],
-          body: [
-            [
-              {
-                text: [
-                  { text: "RN Signature: ", bold: true },
-                  rnSig ? "" : "___________________",
-                ],
-              } as TableCell,
-              rnSigCell as TableCell,
-              { text: [{ text: "Date: ", bold: true }, f("rnSignatureDate")] } as TableCell,
-            ],
-          ],
-        },
-        layout: "lightHorizontalLines",
-      } as Content,
-    ],
-
-    styles: {
-      companyName: { fontSize: 13, bold: true, color: "#1a365d" },
-      companyAddress: { fontSize: 8, color: "#444" },
-      docTitle: { fontSize: 14, bold: true, color: "#1a365d" },
-      sectionHeader: { fontSize: 9, bold: true, fillColor: "#dce6f1", color: "#1a365d" },
-    },
+export async function generateBillingFormPdf(
+  form: Record<string, unknown>,
+  _company?: CompanyHeader,
+): Promise<Buffer> {
+  const str = (key: string): string => {
+    const v = form[key];
+    if (v === undefined || v === null) return "";
+    return String(v).trim();
+  };
+  const isYes = (key: string): boolean => {
+    const v = form[key];
+    return v === true || String(v ?? "").toLowerCase() === "yes";
   };
 
-  const doc = await printer.createPdfKitDocument(docDef);
-  return new Promise((resolve, reject) => {
-    const chunks: Buffer[] = [];
-    doc.on("data", (chunk: Buffer) => chunks.push(chunk));
-    doc.on("end", () => resolve(Buffer.concat(chunks)));
-    doc.on("error", reject);
-    doc.end();
-  });
+  const templateBytes = fs.readFileSync(TEMPLATE_PATH);
+  const pdfDoc = await PDFDocument.load(templateBytes);
+  const pdfForm = pdfDoc.getForm();
+
+  const setText = (name: string, value: string) => {
+    try {
+      pdfForm.getTextField(name).setText(value);
+    } catch {
+      // field missing in template — ignore
+    }
+  };
+  const setCheckmark = (name: string, on: boolean) => setText(name, on ? "X" : "");
+  const setUsed = (name: string, on: boolean, qty?: string) => {
+    if (!on) return setText(name, "");
+    setText(name, qty && qty.trim() ? qty.trim() : "1");
+  };
+
+  // ── Header
+  setText("Invoice", str("invoiceNumber"));
+  setText("PO", str("poNumber"));
+  setText("Name", str("patientName"));
+  setText("Age", str("age"));
+  setCheckmark("Male", isYes("genderMale"));
+  setCheckmark("Female", isYes("genderFemale"));
+  setText("Referring Doctor", str("referringDoctor"));
+  setText("Room", str("roomNumber"));
+  setText("Patient", str("patientMRN") || str("patientAcctNumber"));
+  setText("Tech", str("techName"));
+  setText("Facility", str("facility"));
+  setText("Date", str("date"));
+  setText("Procedure", str("procedure"));
+
+  // ── Modalities — Evoked Potentials (left column)
+  setUsed("95930 x", isYes("cptVisual"));
+  setUsed("92585 x", isYes("cptAuditory"));
+  setUsed("95938 x", isYes("cptUpperExtremities"));
+  setUsed("95938 x_2", isYes("cptLowerExtremities"));
+  setUsed("95939 x", isYes("cptUpperMotorEP"));
+  setUsed("95939 x_2", isYes("cptLowerMotorEP"));
+  setUsed("95870 x", isYes("cptRLNMonitoring"));
+
+  // ── Modalities — EMG / Nerve Conduction (right column)
+  setUsed("95861 x", isYes("cptTwoExtEMG"));
+  setUsed("95864 x", isYes("cptFourExtEMG"));
+  setUsed("95870 x_2", isYes("cptCranialUnilateral"));
+  setUsed("95870 x_3", isYes("cptCranialBilateral"));
+  setUsed("95829 x", isYes("cptElectrocorticography"));
+  setUsed("00000 x", isYes("cptStatFee"));
+  // "x" is the Standby field — show hours if standby was used
+  setText("x", isYes("cptStandby") ? str("standbyHours") || "1" : "");
+
+  // ── EEG & MEP Flat Fee
+  setUsed("95955 x 1", isYes("cptEEG"));
+  setUsed("95955 x 2", isYes("flatFeeMEP"));
+  setText("Baseline", str("baseline"));
+
+  // ── Timing / Equipment
+  setText("Start Time", str("startTime"));
+  setText("End Time", str("endTime"));
+  setText("Thyroid KitFacial Kit", str("thyroidKit"));
+  setText("SSEPEMG", str("ssepEMG"));
+  setText("Fluobeam", str("fluobeam"));
+  setText("Needles Used", str("needlesUsed"));
+  setText("Needles Removed", str("needlesRemoved"));
+
+  // ── Total / Footer
+  setText("TOTAL HOURS  9594095941G0453 SSEPEMGEEG", str("totalHours"));
+  setText("Computer used", str("computerUsed"));
+  setText("Cancellation", str("cancellation"));
+  setText("Neurologist", str("neurologist"));
+  setText("Date_2", str("technicianSignatureDate"));
+  setText("Date_3", str("rnSignatureDate"));
+
+  // ── Signatures — embed PNG image over the signature field area
+  const drawSignature = async (fieldName: string, dataUri: string) => {
+    if (!dataUri || !dataUri.startsWith("data:image/png")) return;
+    try {
+      const field = pdfForm.getField(fieldName);
+      const widgets = field.acroField.getWidgets();
+      const widget = widgets[0];
+      if (!widget) return;
+      const rect = widget.getRectangle();
+      const base64 = dataUri.replace(/^data:image\/png;base64,/, "");
+      const bytes = Buffer.from(base64, "base64");
+      const image = await pdfDoc.embedPng(bytes);
+      const page = pdfDoc.getPage(0);
+      const drawHeight = rect.height + 14;
+      page.drawImage(image, {
+        x: rect.x + 2,
+        y: rect.y - 4,
+        width: rect.width - 4,
+        height: drawHeight,
+      });
+      pdfForm.removeField(field);
+    } catch {
+      // ignore — leave field empty if embed fails
+    }
+  };
+
+  await drawSignature("Signature1_es_:signer:signature", str("technicianSignature"));
+  await drawSignature("Signature2_es_:signer:signature", str("rnSignature"));
+
+  // Flatten so the emailed PDF is read-only and renders cleanly in all viewers
+  pdfForm.flatten();
+
+  const out = await pdfDoc.save();
+  return Buffer.from(out);
 }
